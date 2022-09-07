@@ -13,6 +13,7 @@ import { inferTsconfig } from './inferTsconfig';
 import * as lsif from './lsif';
 import { ProjectIndexer } from './ProjectIndexer';
 import { Counter } from './Counter';
+import { Metadata, Project, ToolInfo } from './lsif-data/lsif';
 
 export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
@@ -47,19 +48,31 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         // SourceField --> change to output json
     };
     try {
+        // writeIndex(
+        //     new lsiftyped.Index({
+        //         metadata: new lsiftyped.Metadata({
+        //             project_root: url.pathToFileURL(options.cwd).toString(),
+        //             text_document_encoding: lsiftyped.TextEncoding.UTF8,
+        //             tool_info: new lsiftyped.ToolInfo({
+        //                 name: 'lsif-typescript',
+        //                 version: packageJson.version,
+        //                 arguments: [],
+        //             }),
+        //         }),
+        //     })
+        // );
         writeIndex(
-            new lsiftyped.Index({
-                metadata: new lsiftyped.Metadata({
-                    project_root: url.pathToFileURL(options.cwd).toString(),
-                    text_document_encoding: lsiftyped.TextEncoding.UTF8,
-                    tool_info: new lsiftyped.ToolInfo({
-                        name: 'lsif-typescript',
-                        version: packageJson.version,
-                        arguments: [],
-                    }),
-                }),
+            new Metadata({
+                id: counter.next(),
+                type: 'vertex',
+                label: 'metaData',
+                version: '0.6.0-sourcefield',
+                projectRoot: url.pathToFileURL(options.cwd).toString(),
+                positionEncoding: 'utf-8',
+                toolInfo: new ToolInfo({ name: 'lsif-typescript', version: packageJson.version }),
             })
         );
+        writeIndex(new Project({ id: counter.next(), type: 'vertex', label: 'project', kind: 'Js/TS' }));
         // NOTE: we may want index these projects in parallel in the future.
         // We need to be careful about which order we index the projects because
         // they can have dependencies.
