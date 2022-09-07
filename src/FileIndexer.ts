@@ -1,3 +1,4 @@
+import { diffChars } from 'diff';
 import * as ts from 'typescript';
 
 import { Counter } from './Counter';
@@ -12,7 +13,7 @@ import {
 } from './Descriptor';
 import { Input } from './Input';
 import * as lsif from './lsif';
-import { FullRange, Position, Range as LsifRange } from './lsif-data/lsif';
+import { FullRange, Moniker, Position, Range as LsifRange, ResultSet } from './lsif-data/lsif';
 import { LsifSymbol } from './LsifSymbol';
 import { lsiftyped } from './main';
 import { Packages } from './Packages';
@@ -136,12 +137,20 @@ export class FileIndexer {
                 start,
                 end,
                 tag: new LsifRange.Tag({
-                    text: lsifSymbol.value, //this.lsifName(declaration),
+                    text: lsifSymbol.value,
                     kind: this.getDeclarationKind(declaration),
                     fullRange: new FullRange({ start, end }),
                 }),
             });
-            // console.log(lsifRange)
+
+            this.writeIndex(new ResultSet({ id: this.lsifCounter.next(), type: 'vertex', label: 'resultSet' }));
+            let monikerData: any = { id: this.lsifCounter.next(), type: 'vertex', label: 'moniker' };
+            // TODO - Fix check if declaration is an export
+            // if (ts.isExportDeclaration(declaration.parent)) {
+            //     let identifier = lsifSymbol.value.split('::')[1];
+            //     monikerData = { ...monikerData, kind: 'export', scheme: 'tsc', identifier };
+            // }
+            this.writeIndex(new Moniker(monikerData));
             this.writeIndex(lsifRange);
 
             let relationships = this.relationships(declaration, lsifSymbol);
