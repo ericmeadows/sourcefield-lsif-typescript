@@ -11,7 +11,7 @@ import { Input } from './Input';
 import * as lsif from './lsif';
 import { LsifSymbol } from './LsifSymbol';
 import { Packages } from './Packages';
-import { DefinitionsReferencesItem, ReferenceResult, ResultSet, TextDocumentEdge } from './lsif-data/lsif';
+import { DefinitionsReferencesItem, Document, ReferenceResult, ResultSet, TextDocumentEdge } from './lsif-data/lsif';
 
 export class DeclarationReferences {
     id: number;
@@ -76,9 +76,10 @@ export class ProjectIndexer {
                 }
             }
             const document = new lsif.lib.codeintel.lsiftyped.Document({
-                relative_path: path.relative(this.options.cwd, sourceFile.fileName),
+                relative_path: title,
                 occurrences: [],
             });
+            this.emitDocument(title, sourceFile);
             const input = new Input(sourceFile.fileName, sourceFile.getText());
             const visitor = new FileIndexer(
                 this.checker,
@@ -115,6 +116,20 @@ export class ProjectIndexer {
             process.stdout.write('\n');
         }
         console.log(`+ ${this.options.projectDisplayName} (${prettyMilliseconds(elapsed)})`);
+    }
+
+    public emitDocument(documentPath: string, sourceFile: ts.SourceFile): number {
+        let id = this.options.counter.next();
+        let document = new Document({
+            id,
+            type: 'vertex',
+            label: 'document',
+            uri: documentPath,
+            languageId: sourceFile.flags & ts.NodeFlags.JavaScriptFile ? 'javascript' : 'typescript',
+        });
+
+        this.options.writeIndex(document);
+        return id;
     }
 
     /**
