@@ -30,6 +30,7 @@ export class Range {
       new Position(endLine, endCharacter)
     )
   }
+  // SourceField - this is fullRange, not the moniker range
   public static fromNode(node: ts.Node): Range {
     const sourceFile = node.getSourceFile()
     const start = sourceFile.getLineAndCharacterOfPosition(node.getStart())

@@ -1,8 +1,8 @@
 {
-  "name": "@sourcegraph/scip-typescript",
+  "name": "@sourcegraph/lsif-typescript",
   "version": "0.2.9",
-  "description": "SCIP indexer for TypeScript and JavaScript",
-  "publisher": "sourcegraph",
+  "description": "LSOF indexer for TypeScript and JavaScript",
+  "publisher": "sourcefield",
   "bin": "dist/src/main.js",
   "main": "./dist/src/main.js",
   "scripts": {

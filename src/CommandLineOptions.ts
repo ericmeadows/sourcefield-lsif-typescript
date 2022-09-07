@@ -1,8 +1,7 @@
 import { Command } from 'commander'
 
 import packageJson from '../package.json'
-
-import * as lsif from './lsif'
+import { Counter } from './Counter'
 
 /** Configuration options to index a multi-project workspace. */
 export interface MultiProjectOptions {
@@ -19,7 +18,8 @@ export interface MultiProjectOptions {
 export interface ProjectOptions extends MultiProjectOptions {
   projectRoot: string
   projectDisplayName: string
-  writeIndex: (index: lsif.lib.codeintel.lsiftyped.Index) => void
+  writeIndex: (index: any) => void
+  counter: Counter
 }
 
 export function mainCommand(
