@@ -13,7 +13,6 @@ import * as lsif from './lsif';
 import { LsifSymbol } from './LsifSymbol';
 import { Packages } from './Packages';
 import { DefinitionsReferencesItem, Document, ReferenceResult, ResultSet, TextDocumentEdge } from './lsif-data/lsif';
-import { Range } from './Range';
 import { DefinitionRange } from './DefinitionRange';
 
 export class DeclarationReferences {
@@ -75,7 +74,6 @@ export class ProjectIndexer {
             stream: this.options.progressBar ? process.stderr : writableNoopStream(),
         });
         let lastWrite = startTimestamp;
-        // let numFilesProcessed = 0;
         for (const [index, sourceFile] of filesToIndex.entries()) {
             const title = path.relative(this.options.cwd, sourceFile.fileName);
             jobs.tick({ title });
@@ -108,30 +106,11 @@ export class ProjectIndexer {
             );
             try {
                 visitor.index();
-                // numFilesProcessed += 1;
             } catch (error) {
                 console.error(`unexpected error indexing project root '${this.options.cwd}'`, error);
             }
-            // throw new Error('stopping after first file');
-            // console.log('document.symbols');
-            // document.symbols.forEach((value) => {
-            //     console.log('\tdocument.symbols[]', value.toObject());
-            //     console.log('&&&&&&&&&&&&&&&&');
-            // });
-            // if (visitor.document.occurrences.length > 0) {
-            //     this.options.writeIndex(
-            //         new lsif.lib.codeintel.lsiftyped.Index({
-            //             documents: [visitor.document],
-            //         })
-            //     );
-            // }
-            // if (numFilesProcessed == 1) break;
         }
-        // console.log('=====');
-        // console.log(references);
-        // console.log('-----');
         this.emitReferences(declarations, references);
-        // console.log('=====');
         jobs.terminate();
         const elapsed = Date.now() - startTimestamp;
         if (!this.options.progressBar && lastWrite > startTimestamp) {

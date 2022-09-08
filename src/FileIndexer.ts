@@ -18,7 +18,6 @@ import { LsifSymbol } from './LsifSymbol';
 import { Packages } from './Packages';
 import { ParentChildRelationships } from './ParentChildRelationships';
 import { Range } from './Range';
-import * as ts_inline from './TypeScriptInternal';
 
 type Descriptor = lsif.lib.codeintel.lsiftyped.Descriptor;
 
