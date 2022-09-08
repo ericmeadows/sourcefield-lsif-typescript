@@ -10,7 +10,8 @@
     "allowSyntheticDefaultImports": true,
     "outDir": "dist",
     "resolveJsonModule": true,
-    "noUnusedLocals": false
+    "noUnusedLocals": false,
+    "sourceMap": true
   },
   "include": ["./src/**/*"],
   "exclude": ["lsif.ts", "snapshots"]

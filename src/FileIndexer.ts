@@ -2,6 +2,7 @@ import { diffChars } from 'diff';
 import * as ts from 'typescript';
 
 import { Counter } from './Counter';
+import { DefinitionRange } from './DefinitionRange';
 import {
     metaDescriptor,
     methodDescriptor,
@@ -13,7 +14,7 @@ import {
 } from './Descriptor';
 import { Input } from './Input';
 import * as lsif from './lsif';
-import { FullRange, Moniker, Position, Range as LsifRange, ResultSet } from './lsif-data/lsif';
+import { Declaration, FullRange, Moniker, Position, Range as LsifRange, ResultSet } from './lsif-data/lsif';
 import { LsifSymbol } from './LsifSymbol';
 import { lsiftyped } from './main';
 import { Packages } from './Packages';
@@ -37,21 +38,35 @@ export class FileIndexer {
         public readonly sourceFile: ts.SourceFile,
         public readonly writeIndex: (index: any) => void,
         public readonly lsifCounter: Counter,
-        public readonly references: Map<string, DeclarationReferences>
+        public readonly definitions: Map<number, DefinitionRange> = new Map<number, DefinitionRange>(),
+        public readonly references: Map<number, DefinitionRange[]>,
+        public readonly languageService: ts.LanguageService
     ) {}
     public index(): void {
+        // console.log(`this.sourceFile.fileName :: ${this.sourceFile.fileName}`);
         this.visit(this.sourceFile);
+        // console.log('this.references', this.references);
     }
 
     // private checkAndEmitOperator() {}
     private visit(node: ts.Node): void {
-        // console.log('WE HEEREEEE')
-        if (ts.isIdentifier(node)) {
-            const sym = this.getTSSymbolAtLocation(node);
-            if (sym) {
-                // console.log(sym)
-                this.visitIdentifier(node, sym);
-            }
+        // if (ts.isIdentifier(node)) {
+        //     const sym = this.getTSSymbolAtLocation(node);
+        //     if (sym) {
+        //         this.visitIdentifier(node, sym);
+        //     }
+        // }
+        const declarationKind = this.getDeclarationKind(node);
+        if (declarationKind != 0) {
+            let { parent, ...parentFree } = node;
+            // const sym = this.getTSSymbolAtLocation(node);
+            // console.log('valid declaration', parentFree);
+
+            // PUSH to Parent-Child
+            let id = this.visitDeclaration(node);
+            ts.forEachChild(node, (node) => this.visit(node));
+            // POP from Parent-Child
+            return;
         }
         ts.forEachChild(node, (node) => this.visit(node));
     }
@@ -80,7 +95,7 @@ export class FileIndexer {
         return symbol;
     }
 
-    private getDeclarationKind(declaration: ts.Declaration): number {
+    private getDeclarationKind(declaration: ts.Node): number {
         if (ts.isModuleDeclaration(declaration)) return 2;
         if (ts.isNamespaceExportDeclaration(declaration)) return 3;
         if (ts.isClassDeclaration(declaration)) return 5;
@@ -101,6 +116,170 @@ export class FileIndexer {
         return 0;
     }
 
+    private isValidSignature(node: ts.Node): boolean {
+        if (ts.isPropertySignature(node)) return true;
+        if (ts.isMethodSignature(node)) return true;
+        if (ts.isConstructSignatureDeclaration(node)) return true;
+        return false;
+    }
+
+    private test(node: ts.Node) {
+        console.log(this.checker.getSymbolAtLocation(node));
+    }
+
+    private emitDeclaration(
+        node:
+            | ts.ClassDeclaration
+            | ts.EnumDeclaration
+            | ts.FunctionDeclaration
+            | ts.InterfaceDeclaration
+            | ts.TypeParameterDeclaration
+            | ts.PropertyDeclaration
+            | ts.MethodDeclaration
+            | ts.ConstructSignatureDeclaration
+            | ts.GetAccessorDeclaration
+            | ts.SetAccessorDeclaration
+            | ts.PropertyDeclaration
+            | ts.ConstructorDeclaration
+            | ts.VariableDeclaration,
+        lsifSymbol: LsifSymbol
+    ) {
+        this.writeIndex(new ResultSet({ id: this.lsifCounter.next(), type: 'vertex', label: 'resultSet' }));
+        this.writeIndex(new Moniker({ id: this.lsifCounter.next(), type: 'vertex', label: 'moniker' }));
+
+        const id = this.lsifCounter.next();
+        const rangeLsif = Range.fromNode(node);
+
+        const start = new Position({
+            line: rangeLsif.start.line,
+            character: rangeLsif.start.character,
+        });
+        const end = new Position({
+            line: rangeLsif.end.line,
+            character: rangeLsif.end.character,
+        });
+        let lsifRange = new LsifRange({
+            id,
+            type: 'vertex',
+            label: 'range',
+            start,
+            end,
+            tag: new LsifRange.Tag({
+                text: lsifSymbol.value,
+                kind: this.getDeclarationKind(node),
+                fullRange: new FullRange({ start, end }),
+            }),
+        });
+        this.definitions.set(id, new DefinitionRange(this.sourceFile.fileName, rangeLsif));
+        this.writeIndex(lsifRange);
+        return id;
+    }
+
+    private getAndStoreReferences(
+        id: number,
+        node:
+            | ts.ClassDeclaration
+            | ts.EnumDeclaration
+            | ts.FunctionDeclaration
+            | ts.InterfaceDeclaration
+            | ts.TypeParameterDeclaration
+            | ts.PropertyDeclaration
+            | ts.MethodDeclaration
+            | ts.ConstructSignatureDeclaration
+            | ts.GetAccessorDeclaration
+            | ts.SetAccessorDeclaration
+            | ts.PropertyDeclaration
+            | ts.ConstructorDeclaration
+            | ts.VariableDeclaration
+    ) {
+        const foundReferences = this.languageService.findReferences(this.sourceFile.fileName, node.name!.getStart());
+        // console.log(
+        //     `this.languageService.findReferences --> ${this.sourceFile.fileName} [${start.line}:${start.character}]..[${end.line}:${end.character}]`
+        // );
+        if (!this.references.has(id)) this.references.set(id, new Array<DefinitionRange>());
+        if (foundReferences) {
+            foundReferences.forEach((foundReference) => {
+                let referencesRangeArray = foundReference.references.map((reference) => {
+                    return new DefinitionRange(
+                        reference.fileName,
+                        Range.fromTextSpan(this.sourceFile, reference.textSpan)
+                    );
+                });
+                this.references.get(id)!.push(...referencesRangeArray);
+                // foundReference.references.forEach((reference) => {
+                //     const positionOfReference = Range.fromTextSpan(this.sourceFile, reference.textSpan);
+                //     // console.log(
+                //     //     `\treference (${this.sourceFile.fileName} [(${positionOfReference.start.line}, ${positionOfReference.start.character})..(${positionOfReference.end.line}, ${positionOfReference.end.character})])`
+                //     // );
+                //     // console.log('\n');
+                // });
+            });
+        }
+    }
+
+    private writeLsifRange(lsifRange: LsifRange): number {
+        this.writeIndex(new ResultSet({ id: this.lsifCounter.next(), type: 'vertex', label: 'resultSet' }));
+        let monikerData: any = { id: this.lsifCounter.next(), type: 'vertex', label: 'moniker' };
+        // TODO - Fix check if declaration is an export
+        // if (ts.isExportDeclaration(declaration.parent)) {
+        //     let identifier = lsifSymbol.value.split('::')[1];
+        //     monikerData = { ...monikerData, kind: 'export', scheme: 'tsc', identifier };
+        // }
+        this.writeIndex(new Moniker(monikerData));
+        this.writeIndex(lsifRange);
+        return this.lsifCounter.get();
+    }
+
+    // private storeRelationships(id: number, lsifSymbol: LsifSymbol, relationships: Relationship[]) {
+    //     // console.log('id', id);
+    //     // console.log('lsifSymbol.value', lsifSymbol.value);
+    //     // console.log('relationships', relationships);
+    //     if (relationships.length == 0) return;
+    //     this.references.set(lsifSymbol.value, new DeclarationReferences(id));
+
+    //     relationships.forEach((relationship) => {
+    //         this.references.get(lsifSymbol.value)!.referencedDeclarationStrings.push(relationship.symbol);
+    //     });
+    // }
+
+    private visitDeclaration(node: ts.Node): number {
+        let id = this.lsifCounter.get();
+        let lsifSymbol = this.lsifSymbol(node);
+        // let relationships = this.relationships(node, lsifSymbol);
+
+        if (
+            ts.isClassDeclaration(node) ||
+            ts.isEnumDeclaration(node) ||
+            ts.isFunctionDeclaration(node) ||
+            ts.isInterfaceDeclaration(node) ||
+            ts.isTypeParameterDeclaration(node)
+        ) {
+            if (node.name === undefined) return id;
+            // console.log('normal declaration! :: ', node.name!.text, lsifSymbol.value);
+            id = this.emitDeclaration(node, lsifSymbol);
+            this.getAndStoreReferences(id, node);
+            // this.storeRelationships(id, lsifSymbol, relationships);
+        }
+
+        if (
+            ts.isPropertyDeclaration(node) ||
+            ts.isMethodDeclaration(node) ||
+            ts.isConstructorDeclaration(node) ||
+            ts.isGetAccessorDeclaration(node) ||
+            ts.isSetAccessorDeclaration(node) ||
+            ts.isConstructSignatureDeclaration(node) //||
+            // ts.isVariableDeclaration(node)
+        ) {
+            if (node.name === undefined) return id;
+            // console.log('ODD declaration ==> ', node.name.getText());
+            id = this.emitDeclaration(node, lsifSymbol);
+            this.getAndStoreReferences(id, node);
+            // this.storeRelationships(id, lsifSymbol, relationships);
+        }
+
+        return id;
+    }
+
     private visitIdentifier(identifier: ts.Identifier, sym: ts.Symbol): void {
         const rangeLsif = Range.fromNode(identifier);
         // const rangeScip: number[] = rangeLsif.toLsif()
@@ -109,6 +288,32 @@ export class FileIndexer {
         // if (isDefinition) {
         //   role |= lsiftyped.SymbolRole.Definition
         // }
+        // console.log(`sym?.declarations?.length = ${sym?.declarations?.length}`);
+        // if (sym?.declarations?.length && sym?.declarations?.length > 1) {
+        //     sym?.declarations.forEach((declaration) => {
+        //         const lsifSymbol = this.lsifSymbol(declaration);
+        //         console.log(`\t${lsifSymbol.value}`);
+        //     });
+        // }
+        // console.log(
+        //     'sym.valueDeclaration',
+        //     [
+        //         ts.SyntaxKind.PropertySignature,
+        //         ts.SyntaxKind.MethodSignature,
+        //         ts.SyntaxKind.CallSignature,
+        //         ts.SyntaxKind.ConstructSignature,
+        //     ].indexOf(sym.valueDeclaration!.kind) > -1
+        // );
+        // // PropertySignature = 165,
+        // // MethodSignature = 167,
+        // // MethodDeclaration = 168,
+        // // ClassStaticBlockDeclaration = 169,
+        // // Constructor = 170,
+        // // GetAccessor = 171,
+        // // SetAccessor = 172,
+        // // CallSignature = 173,
+        // // ConstructSignature = 174,
+        // // IndexSignature = 175,
         for (const declaration of sym?.declarations || []) {
             const lsifSymbol = this.lsifSymbol(declaration);
             if (lsifSymbol.isEmpty()) {
@@ -122,6 +327,7 @@ export class FileIndexer {
             // TODO - remove 2
             if ([0, 2, 13].indexOf(declarationKind) > -1) continue;
             // console.log(declaration)
+            const id = this.lsifCounter.next();
             const start = new Position({
                 line: rangeLsif.start.line,
                 character: rangeLsif.start.character,
@@ -131,7 +337,7 @@ export class FileIndexer {
                 character: rangeLsif.end.character,
             });
             let lsifRange = new LsifRange({
-                id: this.lsifCounter.next(),
+                id,
                 type: 'vertex',
                 label: 'range',
                 start,
@@ -143,6 +349,26 @@ export class FileIndexer {
                 }),
             });
 
+            // console.log(`id: ${id}`);
+            // console.log('\tisValidSignature(declaration)', this.isValidSignature(declaration));
+
+            // console.log(`${lsifSymbol.value} -->`);
+            // console.log(`\tdeclarationKind: ${declarationKind}`);
+            // console.log(`\tdeclaration.kind: ${declaration.kind}`);
+            // console.log(`\tisCallExpression: ${ts.isCallExpression(declaration)}`);
+            // console.log(`\tisFunctionExpression: ${ts.isFunctionExpression(declaration)}`);
+            // console.log(`id: ${id}`);
+            // this.test(declaration);
+            // console.log('...');
+            // console.log(declaration);
+            // console.log('-----------------');
+
+            // console.log(
+            //     `PARENT - isFunctionDeclaration : ${ts.isFunctionDeclaration(
+            //         declaration.parent
+            //     )}, isClassDeclaration : ${ts.isClassDeclaration(declaration.parent)}`
+            // );
+
             this.writeIndex(new ResultSet({ id: this.lsifCounter.next(), type: 'vertex', label: 'resultSet' }));
             let monikerData: any = { id: this.lsifCounter.next(), type: 'vertex', label: 'moniker' };
             // TODO - Fix check if declaration is an export
@@ -153,17 +379,17 @@ export class FileIndexer {
             this.writeIndex(new Moniker(monikerData));
             this.writeIndex(lsifRange);
 
-            let relationships = this.relationships(declaration, lsifSymbol);
+            // let relationships = this.relationships(declaration, lsifSymbol);
             // console.log('==============');
             // console.log('lsifRange', lsifRange.toObject());
 
-            if (relationships.length == 0) continue;
-            this.references.set(lsifRange.tag.text, new DeclarationReferences(lsifRange.id));
+            // if (relationships.length == 0) continue;
+            // this.references.set(lsifRange.tag.text, new DeclarationReferences(lsifRange.id));
 
-            relationships.forEach((relationship) => {
-                // console.log(`\trelationship.symbol -> ${relationship.symbol}`);
-                this.references.get(lsifRange.tag.text)!.referencedDeclarationStrings.push(relationship.symbol);
-            });
+            // relationships.forEach((relationship) => {
+            //     // console.log(`\trelationship.symbol -> ${relationship.symbol}`);
+            //     this.references.get(lsifRange.tag.text)!.referencedDeclarationStrings.push(relationship.symbol);
+            // });
             // console.log('==============');
 
             // // Emit Element
@@ -174,8 +400,9 @@ export class FileIndexer {
             //     symbol_roles: role,
             //   })
             // )
+
             // if (isDefinition) {
-            //   this.addSymbolInformation(identifier, sym, declaration, lsifSymbol)
+            // this.addSymbolInformation(identifier, sym, declaration, lsifSymbol);
             //   this.handleShorthandPropertyDefinition(declaration, rangeScip)
             //   // Only emit one symbol for definitions sites, see https://github.com/sourcegraph/lsif-typescript/issues/45
             //   break
@@ -220,34 +447,22 @@ export class FileIndexer {
     //   }
     // }
 
-    // private addSymbolInformation(
-    //   node: ts.Node,
-    //   sym: ts.Symbol,
-    //   declaration: ts.Node,
-    //   symbol: LsifSymbol
-    // ): void {
-    //   const documentation = [
-    //     '```ts\n' + this.signatureForDocumentation(node, sym) + '\n```',
-    //   ]
-    //   const docstring = sym.getDocumentationComment(this.checker)
-    //   if (docstring.length > 0) {
-    //     documentation.push(ts.displayPartsToString(docstring))
-    //   }
-
-    //   this.document.symbols.push(
-    //     new lsiftyped.SymbolInformation({
-    //       symbol: symbol.value,
-    //       documentation,
-    //       relationships: this.relationships(declaration, symbol),
-    //     })
-    //   )
-    // }
+    private addSymbolInformation(node: ts.Node, sym: ts.Symbol, declaration: ts.Node, symbol: LsifSymbol): void {
+        this.document.symbols.push(
+            new lsiftyped.SymbolInformation({
+                symbol: symbol.value,
+                relationships: this.relationships(declaration, symbol),
+            })
+        );
+    }
 
     private relationships(declaration: ts.Node, declarationSymbol: LsifSymbol): Relationship[] {
+        console.log('relationships ... ');
         const relationships: Relationship[] = [];
         const isAddedSymbol = new Set<string>();
         const pushImplementation = (node: ts.NamedDeclaration, isReferences: boolean): void => {
             const symbol = this.lsifSymbol(node);
+            console.log('symbol.value', symbol.value);
             if (symbol.isEmpty()) {
                 return;
             }
@@ -285,6 +500,10 @@ export class FileIndexer {
                         pushImplementation(member, true);
                     }
                 }
+            });
+        } else if (ts.isFunctionDeclaration(declaration)) {
+            this.forEachAncestor(declaration, (ancestor) => {
+                pushImplementation(ancestor, false);
             });
         }
         return relationships;

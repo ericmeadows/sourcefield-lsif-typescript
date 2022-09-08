@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import { Writable as WritableStream } from 'stream';
 
 import prettyMilliseconds from 'pretty-ms';
@@ -12,6 +13,8 @@ import * as lsif from './lsif';
 import { LsifSymbol } from './LsifSymbol';
 import { Packages } from './Packages';
 import { DefinitionsReferencesItem, Document, ReferenceResult, ResultSet, TextDocumentEdge } from './lsif-data/lsif';
+import { Range } from './Range';
+import { DefinitionRange } from './DefinitionRange';
 
 export class DeclarationReferences {
     id: number;
@@ -38,7 +41,8 @@ export class ProjectIndexer {
         const startTimestamp = Date.now();
         const sourceFiles = this.program.getSourceFiles();
 
-        const references: Map<string, DeclarationReferences> = new Map<string, DeclarationReferences>();
+        const declarations: Map<number, DefinitionRange> = new Map<number, DefinitionRange>();
+        const references: Map<number, DefinitionRange[]> = new Map<number, DefinitionRange[]>();
 
         const filesToIndex: ts.SourceFile[] = [];
         // Visit every sourceFile in the program
@@ -54,6 +58,13 @@ export class ProjectIndexer {
             throw new Error(`no indexable files in project '${this.options.projectDisplayName}'`);
         }
 
+        const languageService = this.createLanguageService(
+            filesToIndex.map(function (file) {
+                return file.fileName;
+            }),
+            {}
+        );
+
         const jobs = new ProgressBar(`  ${this.options.projectDisplayName} [:bar] :current/:total :title`, {
             total: filesToIndex.length,
             renderThrottle: 100,
@@ -64,6 +75,7 @@ export class ProjectIndexer {
             stream: this.options.progressBar ? process.stderr : writableNoopStream(),
         });
         let lastWrite = startTimestamp;
+        // let numFilesProcessed = 0;
         for (const [index, sourceFile] of filesToIndex.entries()) {
             const title = path.relative(this.options.cwd, sourceFile.fileName);
             jobs.tick({ title });
@@ -90,32 +102,75 @@ export class ProjectIndexer {
                 sourceFile,
                 this.options.writeIndex,
                 this.options.counter,
-                references
+                declarations,
+                references,
+                languageService
             );
             try {
                 visitor.index();
+                // numFilesProcessed += 1;
             } catch (error) {
                 console.error(`unexpected error indexing project root '${this.options.cwd}'`, error);
             }
-            if (visitor.document.occurrences.length > 0) {
-                this.options.writeIndex(
-                    new lsif.lib.codeintel.lsiftyped.Index({
-                        documents: [visitor.document],
-                    })
-                );
-            }
+            // throw new Error('stopping after first file');
+            // console.log('document.symbols');
+            // document.symbols.forEach((value) => {
+            //     console.log('\tdocument.symbols[]', value.toObject());
+            //     console.log('&&&&&&&&&&&&&&&&');
+            // });
+            // if (visitor.document.occurrences.length > 0) {
+            //     this.options.writeIndex(
+            //         new lsif.lib.codeintel.lsiftyped.Index({
+            //             documents: [visitor.document],
+            //         })
+            //     );
+            // }
+            // if (numFilesProcessed == 1) break;
         }
-        console.log('=====');
-        console.log(references);
-        console.log('-----');
-        this.emitReferences(references);
-        console.log('=====');
+        // console.log('=====');
+        // console.log(references);
+        // console.log('-----');
+        this.emitReferences(declarations, references);
+        // console.log('=====');
         jobs.terminate();
         const elapsed = Date.now() - startTimestamp;
         if (!this.options.progressBar && lastWrite > startTimestamp) {
             process.stdout.write('\n');
         }
         console.log(`+ ${this.options.projectDisplayName} (${prettyMilliseconds(elapsed)})`);
+    }
+
+    private createLanguageService(rootFileNames: string[], options: ts.CompilerOptions): ts.LanguageService {
+        const files: ts.MapLike<{ version: number }> = {};
+
+        // initialize the list of files
+        rootFileNames.forEach((fileName) => {
+            files[fileName] = { version: 0 };
+        });
+
+        const servicesHost: ts.LanguageServiceHost = {
+            getScriptFileNames: () => rootFileNames,
+            getScriptVersion: (fileName) => files[fileName] && files[fileName].version.toString(),
+            getScriptSnapshot: (fileName) => {
+                if (!fs.existsSync(fileName)) {
+                    return undefined;
+                }
+
+                return ts.ScriptSnapshot.fromString(fs.readFileSync(fileName).toString());
+            },
+            getCurrentDirectory: () => process.cwd(),
+            getCompilationSettings: () => options,
+            getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+            fileExists: ts.sys.fileExists,
+            readFile: ts.sys.readFile,
+            readDirectory: ts.sys.readDirectory,
+            directoryExists: ts.sys.directoryExists,
+            getDirectories: ts.sys.getDirectories,
+        };
+
+        // Create the language service files
+        const services = ts.createLanguageService(servicesHost, ts.createDocumentRegistry());
+        return services;
     }
 
     public emitDocument(documentPath: string, sourceFile: ts.SourceFile): number {
@@ -218,22 +273,38 @@ export class ProjectIndexer {
         return this.emitItemForDefinitionsOrReferences(referenceRangeIds, referenceResultId, 'references');
     }
 
-    private emitReferences(references: Map<string, DeclarationReferences>) {
+    private emitReferences(declarations: Map<number, DefinitionRange>, references: Map<number, DefinitionRange[]>) {
+        console.log('emitReferences');
         let referenceRelationships: Map<number, number[]> = new Map<number, number[]>();
-        references.forEach((declarationReferences, _) => {
-            declarationReferences.referencedDeclarationStrings.forEach((referencedDeclarationString) => {
-                let referencedId = references.get(referencedDeclarationString)?.id;
-                if (referencedId !== undefined) {
-                    console.log(`${referencedId} is referenced by ${declarationReferences.id}`);
-                    if (referenceRelationships.has(referencedId)) {
-                        referenceRelationships.get(referencedId)!.push(declarationReferences.id);
-                    } else {
-                        referenceRelationships.set(referencedId, [declarationReferences.id]);
-                    }
+
+        const declarationEntries = [...declarations.entries()];
+        for (let [referencedId, referenceRanges] of references) {
+            for (let referenceRange of referenceRanges) {
+                let sameFiles = declarationEntries.filter(([declarationId, declarationRange]) => {
+                    return referenceRange.sourceFile == declarationRange.sourceFile;
+                });
+                let rangeOverlaps = sameFiles.filter(([declarationId, declarationRange]) => {
+                    return declarationRange.range.contains(referenceRange.range);
+                });
+                if (rangeOverlaps.length == 0) continue;
+
+                let [overlapId] = rangeOverlaps.reduce((previous, current) => {
+                    let [, previousDefinitionRange] = previous;
+                    let [, currentDefinitionRange] = current;
+                    return previousDefinitionRange.range.contains(currentDefinitionRange.range) ? current : previous;
+                });
+
+                if (referencedId == overlapId) continue;
+
+                if (referenceRelationships.has(referencedId)) {
+                    referenceRelationships.get(referencedId)?.push(overlapId);
+                    continue;
                 }
-            });
-        });
-        console.log('referenceRelationships', referenceRelationships);
+                referenceRelationships.set(referencedId, [overlapId]);
+            }
+        }
+
+        // console.log('referenceRelationships', referenceRelationships);
         referenceRelationships.forEach((referenceRangeIds, definitionRangeId) => {
             this.emitReferencesForDeclaration(definitionRangeId, referenceRangeIds);
         });

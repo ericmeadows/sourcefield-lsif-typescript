@@ -1,5 +1,5 @@
 export class Counter {
-    private n = -1;
+    private n = 0;
     public next(): number {
         this.n++;
         return this.n;
