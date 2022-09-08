@@ -18,6 +18,7 @@ import { Declaration, FullRange, Moniker, Position, Range as LsifRange, ResultSe
 import { LsifSymbol } from './LsifSymbol';
 import { lsiftyped } from './main';
 import { Packages } from './Packages';
+import { ParentChildRelationships } from './ParentChildRelationships';
 import { DeclarationReferences } from './ProjectIndexer';
 import { Range } from './Range';
 import * as ts_inline from './TypeScriptInternal';
@@ -29,6 +30,9 @@ export class FileIndexer {
     private localCounter = new Counter();
     private propertyCounters: Map<string, Counter> = new Map();
     private localSymbolTable: Map<ts.Node, LsifSymbol> = new Map();
+    private parentChildRelationships: ParentChildRelationships[] = Array<ParentChildRelationships>();
+    private parentChildRelationshipsModuleLevel: ParentChildRelationships[] = Array<ParentChildRelationships>();
+
     constructor(
         public readonly checker: ts.TypeChecker,
         public readonly input: Input,
@@ -45,6 +49,10 @@ export class FileIndexer {
     public index(): void {
         // console.log(`this.sourceFile.fileName :: ${this.sourceFile.fileName}`);
         this.visit(this.sourceFile);
+        for (let parentChildRelationshipModuleLevel of this.parentChildRelationshipsModuleLevel) {
+            if (parentChildRelationshipModuleLevel.children.length == 0) continue;
+            this.writeIndex(parentChildRelationshipModuleLevel.getEmittable(this.lsifCounter.next()));
+        }
         // console.log('this.references', this.references);
     }
 
@@ -56,19 +64,34 @@ export class FileIndexer {
         //         this.visitIdentifier(node, sym);
         //     }
         // }
-        const declarationKind = this.getDeclarationKind(node);
-        if (declarationKind != 0) {
-            let { parent, ...parentFree } = node;
-            // const sym = this.getTSSymbolAtLocation(node);
-            // console.log('valid declaration', parentFree);
+        // const declarationKind = this.getDeclarationKind(node);
+        // if (declarationKind != 0) {
+        //     let { parent, ...parentFree } = node;
+        //     // const sym = this.getTSSymbolAtLocation(node);
+        //     // console.log('valid declaration', parentFree);
 
-            // PUSH to Parent-Child
-            let id = this.visitDeclaration(node);
+        //     // PUSH to Parent-Child
+        //     let id = this.visitDeclaration(node);
+        //     ts.forEachChild(node, (node) => this.visit(node));
+        //     // POP from Parent-Child
+        //     return;
+        // }
+        let prevId = this.lsifCounter.get();
+        let id = this.visitDeclaration(node);
+        if (prevId == id) {
             ts.forEachChild(node, (node) => this.visit(node));
-            // POP from Parent-Child
             return;
         }
+        let parentChildRelationship = new ParentChildRelationships(id, this.parentChildRelationships.length == 0);
+        this.parentChildRelationships.push(parentChildRelationship);
         ts.forEachChild(node, (node) => this.visit(node));
+        let child = this.parentChildRelationships.pop();
+        if (child === undefined) return;
+        if (this.parentChildRelationships.length == 0) {
+            this.parentChildRelationshipsModuleLevel.push(child);
+            return;
+        }
+        this.parentChildRelationships[this.parentChildRelationships.length - 1].children.push(child);
     }
 
     // Get the ts.Symbol corresponding to the current node, potentially de-aliasing
