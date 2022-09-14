@@ -1,12 +1,9 @@
 import { test } from 'uvu';
-// import test from 'ava';
 
 import * as lsif from './lsif';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as assert from 'uvu/assert';
-// import deepEqual from 'deep-equal';
-// import assert from 'node:assert';
 
 import { Input } from './Input';
 import { FileIndexer } from './FileIndexer';
@@ -18,9 +15,8 @@ import { LsifSymbol } from './LsifSymbol';
 import { DefinitionRange } from './DefinitionRange';
 import { createLanguageService, ProjectIndexer } from './ProjectIndexer';
 
-// import expect from 'jest';
+let ignoreSkipParameter: boolean = false;
 
-// for (const snapshotDirectory of snapshotDirectories) {
 let counter = new Counter();
 let options: ProjectOptions = {
     cwd: '/Users/ericmeadows/git/echarts',
@@ -69,10 +65,6 @@ const languageService = createLanguageService(
     {}
 );
 
-// let codeToParse: string;
-// let operandsDesired: (string | number | bigint)[][];
-// let operatorsDesired: string[][];
-
 type TestArray = {
     name: string;
     codeToParse: string;
@@ -86,7 +78,7 @@ type TestArray = {
 const testItems: TestArray[] = [
     {
         name: 'simple function',
-        skip: true,
+        skip: false,
         codeToParse: `
     export function log(str: string, onlyOnce?: boolean) {
       outputLog("log", str, onlyOnce);
@@ -104,7 +96,7 @@ const testItems: TestArray[] = [
     },
     {
         name: '2dArrays (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/2dArrays.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
     class Cell {
     }
@@ -195,16 +187,16 @@ const testItems: TestArray[] = [
                 '[]',
                 // ';',
                 'private',
-                '()', // <<<<<<<<
+                '()',
                 '{}',
                 'return',
-                'this', // ODD, but include
+                'this',
                 '.',
                 '.',
                 '()',
                 'function',
                 '()',
-                '{}', // <<<<<<<<
+                '{}',
                 'return',
                 '.',
                 // ';',
@@ -212,26 +204,26 @@ const testItems: TestArray[] = [
             ],
             [
                 ':',
-                '[]', // <<<<<<<<
+                '[]',
                 // ';'
             ],
             [
                 ':',
-                '[]', // <<<<<<<<
+                '[]',
                 // ';'
             ],
             [
                 'private',
-                '()', // <<<<<<<<
+                '()',
                 '{}',
                 'return',
-                'this', // ODD, but include
+                'this',
                 '.',
                 '.',
                 '()',
                 'function',
                 '()',
-                '{}', // <<<<<<<<
+                '{}',
                 'return',
                 '.',
                 // ';',
@@ -241,7 +233,7 @@ const testItems: TestArray[] = [
     },
     {
         name: 'ArrowFunctionExpression (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ArrowFunctionExpression1.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 var v = (public x: string) => { };
         `,
@@ -263,7 +255,7 @@ var v = (public x: string) => { };
     },
     {
         name: 'ClassDeclaration10 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration10.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
    constructor();
@@ -304,7 +296,7 @@ class C {
     },
     {
         name: 'ClassDeclaration11 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration11.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
    constructor();
@@ -342,7 +334,7 @@ class C {
     },
     {
         name: 'ClassDeclaration13 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration13.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
    foo();
@@ -377,7 +369,7 @@ class C {
     },
     {
         name: 'ClassDeclaration15 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration15.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
    foo();
@@ -414,7 +406,7 @@ class C {
     },
     {
         name: 'ClassDeclaration21 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration21.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     0();
@@ -427,7 +419,7 @@ class C {
     },
     {
         name: 'ClassDeclaration22 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration22.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     "foo"();
@@ -462,7 +454,7 @@ class C {
     },
     {
         name: 'ClassDeclaration24 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration24.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class any {
 }
@@ -476,7 +468,7 @@ class any {
     },
     {
         name: 'ClassDeclaration25 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration25.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 interface IList<T> {
     data(): T;
@@ -574,7 +566,7 @@ class List<U> implements IList<U> {
     },
     {
         name: 'ClassDeclaration26 -- parse error! (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration26.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     public const var export foo = 10;
@@ -588,7 +580,7 @@ class C {
     },
     {
         name: 'ClassDeclaration8 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration8.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
   constructor();
@@ -620,7 +612,7 @@ class C {
     },
     {
         name: 'ClassDeclaration9 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration9.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
    foo();
@@ -649,7 +641,7 @@ class C {
     },
     {
         name: 'ClassDeclarationWithInvalidConstOnPropertyDeclaration (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class AtomicNumbers {
   static const H = 1;
@@ -688,7 +680,7 @@ class AtomicNumbers {
     },
     {
         name: 'ClassDeclarationWithInvalidConstOnPropertyDeclaration2 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclarationWithInvalidConstOnPropertyDeclaration2.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     const
@@ -721,7 +713,7 @@ class C {
     },
     {
         name: 'DateTimeFormatAndNumberFormatES2021 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/DateTimeFormatAndNumberFormatES2021.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 // @lib: es2021
 Intl.NumberFormat.prototype.formatRange
@@ -786,7 +778,7 @@ new Intl.DateTimeFormat().formatRangeToParts
     },
     {
         name: 'DeclarationErrorsNoEmitOnError (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/DeclarationErrorsNoEmitOnError.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 // @module: commonjs
 // @declaration: true
@@ -828,7 +820,7 @@ export interface I {
     },
     {
         name: 'ExportAssignment7 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ExportAssignment7.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 export class C {
 }
@@ -851,7 +843,7 @@ export = B;
     },
     {
         name: 'ExportAssignment8 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ExportAssignment8.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 export = B;
 
@@ -874,7 +866,7 @@ export class C {
     },
     {
         name: 'FunctionDeclaration3 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/FunctionDeclaration3.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 function foo();
         `,
@@ -887,7 +879,7 @@ function foo();
     },
     {
         name: 'FunctionDeclaration4 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/FunctionDeclaration4.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 function foo();
 function bar() { }
@@ -913,7 +905,7 @@ function bar() { }
     },
     {
         name: 'FunctionDeclaration6 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/FunctionDeclaration6.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 {
     function foo();
@@ -942,7 +934,7 @@ function bar() { }
     },
     {
         name: 'FunctionDeclaration7 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/FunctionDeclaration7.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 module M {
    function foo();
@@ -974,7 +966,7 @@ module M {
     },
     {
         name: 'InterfaceDeclaration8 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/InterfaceDeclaration8.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 interface string {
 }
@@ -988,7 +980,7 @@ interface string {
     },
     {
         name: 'MemberAccessorDeclaration15 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/MemberAccessorDeclaration15.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
    set Foo(public a: number) { }
@@ -1008,7 +1000,7 @@ class C {
     },
     {
         name: 'ParameterList13 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ParameterList13.ts',
-        skip: true,
+        skip: false,
         codeToParse: `
 interface I {
     new (public x);
@@ -1043,7 +1035,7 @@ interface I {
     },
     {
         name: 'ParameterList4 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ParameterList4.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 function F(public A) {
 }
@@ -1060,7 +1052,7 @@ function F(public A) {
     },
     {
         name: 'ParameterList5 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ParameterList5.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 function A(): (public B) => C {
 }
@@ -1093,7 +1085,7 @@ function A(): (public B) => C {
     },
     {
         name: 'ParameterList6 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ParameterList6.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     constructor(C: (public A) => any) {
@@ -1114,7 +1106,7 @@ class C {
     },
     {
         name: 'ParameterList7 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ParameterList7.ts',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C1 {
     constructor(public p1:string); // ERROR
@@ -1190,7 +1182,7 @@ class C1 {
     },
     {
         name: 'ParameterList8 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ParameterList8.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 declare class C2 {
     constructor(public p1:string); // ERROR
@@ -1275,7 +1267,7 @@ declare class C2 {
     },
     {
         name: 'SystemModuleForStatementNoInitializer (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/SystemModuleForStatementNoInitializer.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 //@module: system
 
@@ -1338,7 +1330,7 @@ for (; ;) {
     },
     {
         name: 'abstractClassInLocalScope (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractClassInLocalScope.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 (() => {
     abstract class A {}
@@ -1374,7 +1366,7 @@ for (; ;) {
     },
     {
         name: 'abstractClassUnionInstantiation (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractClassUnionInstantiation.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class ConcreteA {}
 class ConcreteB {}
@@ -1388,8 +1380,8 @@ class ConcreteB {}
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Abstract Classes',
+        skip: false,
         codeToParse: `
 abstract class AbstractA { a: string; }
 abstract class AbstractB { b: string; }
@@ -1440,8 +1432,8 @@ abstract class AbstractB { b: string; }
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Classes with Union Type',
+        skip: false,
         codeToParse: `
 type Abstracts = typeof AbstractA | typeof AbstractB;
 type Concretes = typeof ConcreteA | typeof ConcreteB;
@@ -1508,8 +1500,8 @@ type ConcretesOrAbstracts = Concretes | Abstracts;
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Const implementations of Class',
+        skip: false,
         codeToParse: `
 declare const cls1: ConcretesOrAbstracts;
 declare const cls2: Abstracts;
@@ -1535,8 +1527,8 @@ declare const cls3: Concretes;
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Instation of new classes',
+        skip: false,
         codeToParse: `
 new cls1(); // should error
 new cls2(); // should error
@@ -1559,8 +1551,8 @@ new cls3(); // should work
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Array mapping with Arrow Functions',
+        skip: true, // Skipping due to error below
         codeToParse: `
 [ConcreteA, AbstractA, AbstractB].map(cls => new cls()); // should error
 [ConcreteA, ConcreteB].map(cls => new cls()); // should work
@@ -1576,6 +1568,7 @@ new cls3(); // should work
                 ',',
                 '.',
                 '()',
+                // '()', // This shows up, but is erroneous - skipping this test
                 '=>',
                 'new',
                 '()',
@@ -1584,6 +1577,7 @@ new cls3(); // should work
                 ',',
                 '.',
                 '()',
+                // '()', // This shows up, but is erroneous - skipping this test
                 '=>',
                 'new',
                 '()',
@@ -1593,7 +1587,7 @@ new cls3(); // should work
     },
     {
         name: 'abstractIdentifierNameStrict (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractIdentifierNameStrict.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 var abstract = true;
 
@@ -1637,7 +1631,7 @@ function foo() {
     },
     {
         name: 'abstractInterfaceIdentifierName (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractInterfaceIdentifierName.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 interface abstract {
     abstract(): void;
@@ -1677,7 +1671,7 @@ interface abstract {
     },
     {
         name: 'abstractPropertyBasics (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractPropertyBasics.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 abstract class B implements A {
     abstract prop: string;
@@ -1802,7 +1796,7 @@ abstract class B implements A {
     },
     {
         name: 'abstractPropertyInConstructor (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractPropertyInConstructor.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 abstract class DerivedAbstractClass extends AbstractClass {
     cb = (s: string) => {};
@@ -1869,11 +1863,11 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'extends',
                 '{}',
                 '=',
+                '()',
                 ':',
                 'string',
                 '=>',
                 '{}',
-                // ';',
                 'constructor',
                 '()',
                 ':',
@@ -1886,7 +1880,6 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'super',
                 '()',
                 ',',
-                // ';',
                 'this',
                 '.',
                 '()',
@@ -1894,7 +1887,6 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 '.',
                 '.',
                 '()',
-                // ';',
             ],
             [
                 'abstract',
@@ -1902,11 +1894,11 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'extends',
                 '{}',
                 '=',
+                '()',
                 ':',
                 'string',
                 '=>',
                 '{}',
-                // ';',
                 'constructor',
                 '()',
                 ':',
@@ -1919,7 +1911,6 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'super',
                 '()',
                 ',',
-                // ';',
                 'this',
                 '.',
                 '()',
@@ -1927,16 +1918,8 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 '.',
                 '.',
                 '()',
-                // ';',
             ],
-            [
-                '=',
-                ':',
-                'string',
-                '=>',
-                '{}',
-                // ';',
-            ],
+            ['=', '()', ':', 'string', '=>', '{}'],
             [
                 'constructor',
                 '()',
@@ -1950,7 +1933,6 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'super',
                 '()',
                 ',',
-                // ';',
                 'this',
                 '.',
                 '()',
@@ -1958,13 +1940,12 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 '.',
                 '.',
                 '()',
-                // ';',
             ],
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Abstract Properties and Constructor with Type & This assignments + named parameters',
+        skip: false,
         codeToParse: `
 abstract class C1 {
     abstract x: string;
@@ -2095,7 +2076,7 @@ abstract class C1 {
     },
     {
         name: 'abstractPropertyNegative (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/abstractPropertyNegative.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class WrongTypeAccessorImpl extends WrongTypeAccessor {
     get num() { return "nope, wrong"; }
@@ -2139,7 +2120,7 @@ class WrongTypeAccessorImpl extends WrongTypeAccessor {
     },
     {
         name: 'acceptableAlias1 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/acceptableAlias1.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 module M {
     export module N {
@@ -2183,7 +2164,7 @@ import r = M.X;
     },
     {
         name: 'accessorBodyInTypeContext (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorBodyInTypeContext.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 type A = {
     get foo() { return 0 }
@@ -2202,16 +2183,16 @@ type B = {
             ['foo', 'v'],
         ],
         operatorsDesired: [
-            ['type', '=', 'get', '()', '{}', 'return', 'type', '=', 'set', '()', ':', 'any', '{}'],
-            ['type', '=', 'get', '()', '{}', 'return'],
+            ['type', '=', '{}', 'get', '()', '{}', 'return', 'type', '=', '{}', 'set', '()', ':', 'any', '{}'],
+            ['type', '=', '{}', 'get', '()', '{}', 'return'],
             ['get', '()', '{}', 'return'],
-            ['type', '=', 'set', '()', ':', 'any', '{}'],
+            ['type', '=', '{}', 'set', '()', ':', 'any', '{}'],
             ['set', '()', ':', 'any', '{}'],
         ],
     },
     {
         name: 'accessDeclarationOrder [incl privateIdentifier] (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorDeclarationOrder.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C1 {
     #name: string;
@@ -2285,7 +2266,7 @@ class C1 {
     },
     {
         name: 'accessorParameterAccessibilityModifier (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorParameterAccessibilityModifier.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     set X(public v) { }
@@ -2308,7 +2289,7 @@ class C {
     },
     {
         name: 'accessorWithInitializer (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorWithInitializer.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     set X(v = 0) { }
@@ -2331,7 +2312,7 @@ class C {
     },
     {
         name: 'accessorWithLineTerminator (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorWithLineTerminator.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     get
@@ -2357,7 +2338,7 @@ class C {
     },
     {
         name: 'accessorWithRestParam (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorWithRestParam.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class C {
     set X(...v) { }
@@ -2380,7 +2361,7 @@ class C {
     },
     {
         name: 'accessorsEmit (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/accessorsEmit.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 class Test {
     get Property(): Result {
@@ -2402,8 +2383,8 @@ class Test {
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Interface with function, and function that involves parameters',
+        skip: false,
         codeToParse: `
 interface Foo {
     (): string;
@@ -2423,7 +2404,7 @@ interface Bar extends Foo {
     },
     {
         name: 'asyncAwaitWithCapturedBlockScopeVar (https://github.com/microsoft/TypeScript/blob/77374732df82c9d5c1319677dc595868bbc648b5/tests/cases/compiler/asyncAwaitWithCapturedBlockScopeVar.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 async function fn1() {
     let ar = [];
@@ -2489,7 +2470,7 @@ async function fn1() {
     },
     {
         name: 'computedPropertyName (https://github.com/microsoft/TypeScript/blob/77374732df82c9d5c1319677dc595868bbc648b5/tests/cases/conformance/externalModules/typeOnly/computedPropertyName.ts)',
-        skip: true,
+        skip: false,
         codeToParse: `
 interface Component {
   [onInit]?(): void;
@@ -2505,7 +2486,7 @@ interface Component {
     },
     {
         name: 'optionalPropertySignature',
-        skip: true,
+        skip: false,
         codeToParse: `
 interface UserAccount {
   id: number;
@@ -2518,13 +2499,13 @@ interface UserAccount {
             ['UserAccount', 'id', 'email'],
         ],
         operatorsDesired: [
-            ['interface', '{}', ':', 'number', ',', '?', ':', 'string'],
-            ['interface', '{}', ':', 'number', ',', '?', ':', 'string'],
+            ['interface', '{}', ':', 'number', '?', ':', 'string'],
+            ['interface', '{}', ':', 'number', '?', ':', 'string'],
         ],
     },
     {
         name: 'classStaticBlockDeclaration',
-        skip: true,
+        skip: false,
         codeToParse: `
 class Unicorn {
   static #isShiny = false;
@@ -2551,8 +2532,8 @@ class Unicorn {
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Export Named Typed with Union',
+        skip: false,
         codeToParse: `
 export type DashboardLinkType = 'link' | 'dashboards';
         `,
@@ -2567,8 +2548,8 @@ export type DashboardLinkType = 'link' | 'dashboards';
         ],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Class expension and static var with Array type parameter',
+        skip: false,
         codeToParse: `
 export class DashboardModel implements TimeModel {
   id: any;
@@ -2632,7 +2613,7 @@ export class DashboardModel implements TimeModel {
     },
     {
         name: 'for-in statement',
-        skip: true,
+        skip: false,
         codeToParse: `
     for (const property in this) {
         console.log(property)
@@ -2644,7 +2625,7 @@ export class DashboardModel implements TimeModel {
     },
     {
         name: 'delete expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 delete model.scopedVars;
         `,
@@ -2654,7 +2635,7 @@ delete model.scopedVars;
     },
     {
         name: 'intersection type node',
-        skip: true,
+        skip: false,
         codeToParse: `
 export class DashboardModel implements TimeModel {
     private updateTemplatingSaveModelClone(
@@ -2733,7 +2714,7 @@ export class DashboardModel implements TimeModel {
     },
     {
         name: 'for-of statement',
-        skip: true,
+        skip: false,
         codeToParse: `
 for (const current of copy.templating.list) {
     console.log(current);
@@ -2745,7 +2726,7 @@ for (const current of copy.templating.list) {
     },
     {
         name: 'nonNull Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 function foo(maxPos: Position) {
     return maxPos!.y;
@@ -2763,7 +2744,7 @@ function foo(maxPos: Position) {
     },
     {
         name: 'element access expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 if (DashboardModel.nonPersistedProperties[property] || !this.hasOwnProperty(property)) {
     continue;
@@ -2774,8 +2755,8 @@ if (DashboardModel.nonPersistedProperties[property] || !this.hasOwnProperty(prop
         operatorsDesired: [['if', '()', '.', '[]', '||', '!', 'this', '.', '()', '{}', 'continue']],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Spread Operator',
+        skip: false,
         codeToParse: `
 pull(this.panels, ...panelsToRemove);
         `,
@@ -2785,7 +2766,7 @@ pull(this.panels, ...panelsToRemove);
     },
     {
         name: 'visit conditional expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 panelIndex >= 0 ? { panel: this.panels[panelIndex], index: panelIndex } : null;
         `,
@@ -2794,8 +2775,8 @@ panelIndex >= 0 ? { panel: this.panels[panelIndex], index: panelIndex } : null;
         operatorsDesired: [['>=', '?', '{}', ':', 'this', '.', '[]', ',', ':', ':', 'null']],
     },
     {
-        name: '',
-        skip: true,
+        name: 'Ternary Expression',
+        skip: false,
         codeToParse: `
 (this.timezone ? this.timezone : contextSrv?.user?.timezone) as TimeZone
         `,
@@ -2805,7 +2786,7 @@ panelIndex >= 0 ? { panel: this.panels[panelIndex], index: panelIndex } : null;
     },
     {
         name: 'Type Predicate',
-        skip: true,
+        skip: false,
         codeToParse: `
 function isPanelWithLegend(panel: PanelModel): panel is PanelModel & Pick<Required<PanelModel>, 'legend'> {
     return Boolean(panel.legend);
@@ -2849,7 +2830,7 @@ function isPanelWithLegend(panel: PanelModel): panel is PanelModel & Pick<Requir
     },
     {
         name: 'while loop',
-        skip: true,
+        skip: false,
         codeToParse: `
 let i: number = 2;
 
@@ -2864,7 +2845,7 @@ while (i < 4) {
     },
     {
         name: 'Indexed Access Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 !item.keyInfo && (item.keyInfo = {} as MappingResultItem['keyInfo']);
         `,
@@ -2874,7 +2855,7 @@ while (i < 4) {
     },
     {
         name: 'Do-While',
-        skip: true,
+        skip: false,
         codeToParse: `
 do {
     keyInfo.id = '\0' + keyInfo.name + '\0' + idNum++;
@@ -2888,7 +2869,7 @@ do {
     },
     {
         name: 'Throw',
-        skip: true,
+        skip: false,
         codeToParse: `
 throw new Error();
         `,
@@ -2898,7 +2879,7 @@ throw new Error();
     },
     {
         name: 'Tuple Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 export function compressBatches(batchA: BatchItem[], batchB: BatchItem[]): [BatchItem[], BatchItem[]] {}
         `,
@@ -2914,7 +2895,7 @@ export function compressBatches(batchA: BatchItem[], batchB: BatchItem[]): [Batc
     },
     {
         name: 'Regular Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 const parsedKey = key.match(/^(\w+)(Index|Id|Name)$/) || [];
         `,
@@ -2924,7 +2905,7 @@ const parsedKey = key.match(/^(\w+)(Index|Id|Name)$/) || [];
     },
     {
         name: 'Type Operator Node',
-        skip: true,
+        skip: false,
         codeToParse: `
 const queryType = (parsedKey[2] || '').toLowerCase() as keyof QueryReferringUserOption;
         `,
@@ -2934,17 +2915,17 @@ const queryType = (parsedKey[2] || '').toLowerCase() as keyof QueryReferringUser
     },
     {
         name: 'Parenthesized Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 const leftArr = sourceValue as (string | number)[];
         `,
         numItemsInHeirarchy: 1,
         operandsDesired: [['leftArr', 'sourceValue']],
-        operatorsDesired: [['const', '=', 'as', 'string', '|', 'number', '[]']],
+        operatorsDesired: [['const', '=', 'as', '()', 'string', '|', 'number', '[]']],
     },
     {
         name: 'Semicolon Class Element',
-        skip: true,
+        skip: false,
         codeToParse: `
 class Foo {
     private _buildTree() {};
@@ -2960,7 +2941,7 @@ class Foo {
     },
     {
         name: 'Switch Case (w/Default) Statement',
-        skip: true,
+        skip: false,
         codeToParse: `
 switch (positionInfo.left || positionInfo.right) {
     case 'center':
@@ -3016,7 +2997,7 @@ switch (positionInfo.left || positionInfo.right) {
     },
     {
         name: 'Typeof Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 const hasWindow = typeof window !== 'undefined';
         `,
@@ -3026,7 +3007,7 @@ const hasWindow = typeof window !== 'undefined';
     },
     {
         name: 'Empty Statement',
-        skip: true,
+        skip: false,
         codeToParse: `
 export interface SetOptionOpts {
     notMerge?: boolean;
@@ -3044,7 +3025,7 @@ export interface SetOptionOpts {
     },
     {
         name: 'Mapped Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 type ECEventDefinition = {
     [key in ZRElementEventName]: EventCallbackSingleParam<ECElementEvent>
@@ -3126,7 +3107,7 @@ type ECEventDefinition = {
     },
     {
         name: 'Labeled Statement',
-        skip: true,
+        skip: false,
         codeToParse: `
 _throttledZrFlush: false ? R : never;
         `,
@@ -3136,7 +3117,7 @@ _throttledZrFlush: false ? R : never;
     },
     {
         name: 'Conditional Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 class ECharts extends Eventful<ECEventDefinition> {
     private _throttledZrFlush: zrender.ZRenderType extends {flush: infer R} ? R : never;
@@ -3176,7 +3157,7 @@ class ECharts extends Eventful<ECEventDefinition> {
     },
     {
         name: 'Try-Catch',
-        skip: true,
+        skip: false,
         codeToParse: `
 try {
     prepare(this);
@@ -3191,7 +3172,7 @@ catch (e) {
     },
     {
         name: 'Class Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 createExtensionAPI = function (ecIns: ECharts): ExtensionAPI {
     return new (class extends ExtensionAPI {})
@@ -3203,7 +3184,7 @@ createExtensionAPI = function (ecIns: ECharts): ExtensionAPI {
     },
     {
         name: 'Named Exports',
-        skip: true,
+        skip: false,
         codeToParse: `
 export {registerLayout, registerVisual};
         `,
@@ -3213,7 +3194,7 @@ export {registerLayout, registerVisual};
     },
     {
         name: 'This Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 class foo {
     rawr(a: string): this;
@@ -3233,7 +3214,7 @@ class foo {
     },
     {
         name: 'Import Clause',
-        skip: true,
+        skip: false,
         codeToParse: `
 import { ZipCodeValidator } from "./ZipCodeValidator";
 import { ZipCodeValidator as ZCV } from "./ZipCodeValidator1";
@@ -3294,15 +3275,15 @@ import { getResponse, type APIResponseType2} from "./api2";
     },
     {
         name: 'Template Expression - simple',
-        skip: true,
+        skip: false,
         codeToParse: 'warn(`Duplicated seriesKey in universalTransition ${transitionKeyStr}`);',
         numItemsInHeirarchy: 1,
-        operandsDesired: [['warn', '"Duplicated seriesKey in universalTransition "', 'transitionKeyStr']],
+        operandsDesired: [['warn', '"Duplicated seriesKey in universalTransition "', 'transitionKeyStr', '""']],
         operatorsDesired: [['()', '${}']],
     },
     {
         name: 'Template Expression - with head, middle, and tail',
-        skip: true,
+        skip: false,
         codeToParse:
             'warn(`First: ${firstElem}, Second: ${secondElem}, Third: ${thirdElem}, Fourth: ${fourthElem}, `);',
         numItemsInHeirarchy: 1,
@@ -3324,7 +3305,7 @@ import { getResponse, type APIResponseType2} from "./api2";
     },
     {
         name: 'Void Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 (symbolPath as LineECSymbol).__specifiedRotation = symbolRotate == null || isNaN(symbolRotate)
     ? void 0
@@ -3353,7 +3334,7 @@ import { getResponse, type APIResponseType2} from "./api2";
     },
     {
         name: 'Array Binding Pattern',
-        skip: true,
+        skip: false,
         codeToParse: `
 const [min1, max1] = bboxFromPoints(points1);
         `,
@@ -3363,7 +3344,7 @@ const [min1, max1] = bboxFromPoints(points1);
     },
     {
         name: 'Constructor Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 type Constructor<T> = new (...args: any[]) => T;
         `,
@@ -3379,7 +3360,7 @@ type Constructor<T> = new (...args: any[]) => T;
     },
     {
         name: 'No Substitution Template Literal',
-        skip: true,
+        skip: false,
         codeToParse:
             'console.error(`"import echarts from \'echarts/lib/echarts\'" is not supported anymore. Use "import * as echarts from \'echarts/lib/echarts\'" instead;`);',
         numItemsInHeirarchy: 1,
@@ -3394,7 +3375,7 @@ type Constructor<T> = new (...args: any[]) => T;
     },
     {
         name: 'Namespace Export',
-        skip: true,
+        skip: false,
         codeToParse: `
 export * as zrender from 'zrender/src/zrender';
         `,
@@ -3404,7 +3385,7 @@ export * as zrender from 'zrender/src/zrender';
     },
     {
         name: 'Rest Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 const SYMBOL_PROPS: [...typeof SYMBOL_PROPS_WITH_CB, 'symbolKeepAspect'] = SYMBOL_PROPS_WITH_CB.concat([
     'symbolKeepAspect'
@@ -3425,7 +3406,7 @@ const SYMBOL_PROPS: [...typeof SYMBOL_PROPS_WITH_CB, 'symbolKeepAspect'] = SYMBO
     },
     {
         name: 'Enum & Enum Member',
-        skip: true,
+        skip: false,
         codeToParse: `
 export enum AppStatus {
   /**
@@ -3450,7 +3431,7 @@ export enum AppStatus {
     },
     {
         name: 'Yield & Yield*',
-        skip: true,
+        skip: false,
         codeToParse: `
 function* getHostHashes(actualHost: string) {
     yield new Sha256().update(actualHost, 'utf8').digest('hex');
@@ -3505,7 +3486,7 @@ function* getHostHashes(actualHost: string) {
     },
     {
         name: 'Tagged Template Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 if (showHelp) {
   log.write(
@@ -3546,7 +3527,7 @@ if (showHelp) {
     },
     {
         name: 'Import Type & Export Default',
-        skip: true,
+        skip: false,
         codeToParse: `
 declare module 'react-redux/lib/utils/shallowEqual' {
   const shallowEqual: typeof import('react-redux').shallowEqual;
@@ -3567,7 +3548,7 @@ declare module 'react-redux/lib/utils/shallowEqual' {
     },
     {
         name: 'Meta Property',
-        skip: true,
+        skip: false,
         codeToParse: `
 export class KbnError extends Error {
   constructor(message: string) {
@@ -3628,7 +3609,7 @@ export class KbnError extends Error {
     },
     {
         name: 'Spread Assignment',
-        skip: true,
+        skip: false,
         codeToParse: `
 export const INITIAL_STATE: State = {
   ...SUPER_INITIAL_STATE,
@@ -3641,7 +3622,7 @@ export const INITIAL_STATE: State = {
     },
     {
         name: 'Type Assertion',
-        skip: true,
+        skip: false,
         codeToParse: `
 function foo(): C & ((...args: A) => T) {
     return <C & ((...args: A) => T)>_Class;
@@ -3697,7 +3678,7 @@ function foo(): C & ((...args: A) => T) {
     },
     {
         name: 'Import Assertions - Assert Clause & Assert Entry',
-        skip: true,
+        skip: false,
         codeToParse: `
 import obj from "./something.json" assert { type: "json" };
         `,
@@ -3707,7 +3688,7 @@ import obj from "./something.json" assert { type: "json" };
     },
     {
         name: 'External Module Reference',
-        skip: true,
+        skip: false,
         codeToParse: `
 import React = require('react');
         `,
@@ -3717,7 +3698,7 @@ import React = require('react');
     },
     {
         name: 'Optional Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 export function getPackageDetails(pkg: string): [string, string?] {
   const idx = pkg.lastIndexOf('@');
@@ -3861,7 +3842,7 @@ export function getPackageDetails(pkg: string): [string, string?] {
     },
     {
         name: 'Import & Declare TSX Component',
-        skip: true,
+        skip: false,
         codeToParse: `
 import MyComponent from "./myComponent";
 <MyComponent />; // ok
@@ -3873,7 +3854,7 @@ import MyComponent from "./myComponent";
     },
     {
         name: 'TSX Attribute, Attributes, and Expression',
-        skip: true,
+        skip: false,
         codeToParse: `
 function Story(props) {
   const SpecificStory = components[props.storyType];
@@ -3915,7 +3896,7 @@ function Story(props) {
     },
     {
         name: 'TSX Non-Bracketed Attribute and TSX Spread Operator',
-        skip: true,
+        skip: false,
         codeToParse: `
 function App1() {
   return <Greeting firstName="Ben" lastName="Hector" />;
@@ -3976,7 +3957,7 @@ function App2() {
     },
     {
         name: 'TSX Component with expression in value',
-        skip: true,
+        skip: false,
         codeToParse: `
 <MyComponent foo={1 + 2 + 3 + 4} />
         `,
@@ -3987,7 +3968,7 @@ function App2() {
     },
     {
         name: 'TSX Element, Opening Element, Closing Element, and Text',
-        skip: true,
+        skip: false,
         codeToParse: `
 <MyComponent>Hello world!</MyComponent>
         `,
@@ -3998,7 +3979,7 @@ function App2() {
     },
     {
         name: 'TSX Fragment - Modern',
-        skip: true, // TODO - revisit when `render()` -> ['render', '()']
+        skip: false, // TODO - revisit when `render()` -> ['render', '()']
         codeToParse: `
 render() {
   return (
@@ -4015,7 +3996,7 @@ render() {
     },
     {
         name: 'TSX Fragment - Original',
-        skip: true,
+        skip: false,
         codeToParse: `
 render() {
   return (
@@ -4032,7 +4013,7 @@ render() {
     },
     {
         name: 'Template Literal Type',
-        skip: true,
+        skip: false,
         codeToParse: `
 export interface CronProps {
     schedule?: \`rate(\${string})\` | \`cron(\${string}, \${string})\`;
@@ -4050,7 +4031,7 @@ export interface CronProps {
     },
     {
         name: 'Debugger Statement',
-        skip: true,
+        skip: false,
         codeToParse: `
 await page.evaluate(() => {
     debugger; // eslint-disable-line no-debugger
@@ -4062,7 +4043,7 @@ await page.evaluate(() => {
     },
     {
         name: 'With Statement',
-        skip: true,
+        skip: false,
         codeToParse: `
 declare module M {
     with (x) {
@@ -4081,7 +4062,7 @@ declare module M {
     },
     {
         name: 'Namespace Export Declaration',
-        skip: true,
+        skip: false,
         codeToParse: `
 export as namespace CodeMirror;
         `,
@@ -4091,7 +4072,7 @@ export as namespace CodeMirror;
     },
     {
         name: 'Decorators',
-        skip: true,
+        skip: false,
         codeToParse: `
 @Component({
     selector: 'doc-button',
@@ -4203,40 +4184,20 @@ export class InputComponent<T> {
             ['@', '()', 'public', ':', '|', '='],
         ],
     },
-    {
-        name: '',
-        skip: false,
-        codeToParse: `
-import React from "react";
-        `,
-        scriptKind: ts.ScriptKind.TSX,
-        numItemsInHeirarchy: 1,
-        operandsDesired: [[]],
-        operatorsDesired: [[]],
-    },
-    {
-        name: '',
-        skip: true,
-        codeToParse: fs.readFileSync('/Users/ericmeadows/git/echarts/src/chart/custom/CustomView.ts', 'utf8'),
-        numItemsInHeirarchy: 1,
-        operandsDesired: [[]],
-        operatorsDesired: [[]],
-    },
-    {
-        name: '',
-        skip: true,
-        codeToParse: `
-
-        `,
-        numItemsInHeirarchy: 1,
-        operandsDesired: [[]],
-        operatorsDesired: [[]],
-    },
+    // {
+    //     name: 'File Search',
+    //     skip: false,
+    //     codeToParse: fs.readFileSync('/Users/ericmeadows/git/echarts/src/chart/custom/CustomView.ts', 'utf8'),
+    //     numItemsInHeirarchy: 1,
+    //     operandsDesired: [[]],
+    //     operatorsDesired: [[]],
+    // },
 ];
 
 for (const testItem of testItems.slice()) {
-    if (testItem.skip) continue;
+    if (!ignoreSkipParameter && testItem.skip) continue;
     test(testItem.name, () => {
+        console.log(`TEST ::> ${testItem.name}`);
         const sourceFile = ts.createSourceFile(
             'test',
             testItem.codeToParse,
@@ -4267,14 +4228,6 @@ for (const testItem of testItems.slice()) {
         visitor.index();
         assert.equal(visitor.currentComponentHeirarchy.length, testItem.numItemsInHeirarchy);
 
-        // for (let i = 0; i < visitor.currentComponentHeirarchy.length; i++) {
-        //     let currentHalstead = visitor.currentComponentHeirarchy[i].halstead;
-        //     assert.deepStrictEqual(currentHalstead.operators, testItem.operatorsDesired[i]);
-        //     assert.deepStrictEqual(currentHalstead.operands, testItem.operandsDesired[i]);
-        //     // expect(currentHalstead.operators).toEqual(operatorsDesired[i]);
-        //     // expect(currentHalstead.operands).toEqual(operandsDesired[i]);
-        // }
-
         assert.equal(
             JSON.stringify(
                 visitor.currentComponentHeirarchy.map((value) => {
@@ -4294,10 +4247,10 @@ for (const testItem of testItems.slice()) {
     });
 }
 
+// Debugging:  Useful to trace down implementations
 const DEBUG = false;
 const directoryToSearch = '/Users/ericmeadows/git/violet';
 const searchExtension = 'sx'; // ".ts";
-// TEMP
 if (DEBUG) {
     let files: string[] = [];
     function ThroughDirectoryTs(Directory: string, endsWith: string) {
@@ -4364,6 +4317,5 @@ if (DEBUG) {
         });
     }
 }
-// TEMP
 
 test.run();

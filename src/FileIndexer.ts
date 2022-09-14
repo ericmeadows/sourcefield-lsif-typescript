@@ -654,13 +654,10 @@ export class FileIndexer {
     }
 
     private visitArrowFunction(node: ts.ArrowFunction): boolean {
-        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`);
-        // TODO - needs more investigation into how to get it to work
-        // if (node.parameters.pos != node.parameters.end)
-        this.visitNodeArray(node.parameters, '()', ','); //, node.parameters.length != 1);
+        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`, node);
+        this.visitNodeArray(node.parameters, '()', ','); // TODO - solve why some arrow functions have this and others do not
         if (node.equalsGreaterThanToken.pos != node.equalsGreaterThanToken.end) this.addOperatorsToAllHalstead(['=>']);
         this.continueWalk(node.body);
-        node.body.flags;
         if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
@@ -849,7 +846,7 @@ export class FileIndexer {
     /////////
     private visitJsxText(node: ts.JsxText): boolean {
         if (this.dev) console.log(`${this.indent()}• visitJsxText [${node.pos}:${node.end}]`);
-        let text = node.text.replace(/(\r\n|\n|\r|\s)/gm, '');
+        let text = node.text.replace(/(\r\n\s*|\n\s*|\r\s*)/gm, '');
         if (text == '') return false;
         this.addOperandsToAllHalstead([`"${text}"`]);
         return false;
@@ -919,7 +916,7 @@ export class FileIndexer {
     }
     private visitConstructorTypeNode(node: ts.ConstructorTypeNode): boolean {
         if (this.dev) console.log(`${this.indent()}• visitConstructorTypeNode [${node.pos}:${node.end}]`);
-        this.addOperatorsToAllHalstead(['=', 'new']);
+        this.addOperatorsToAllHalstead(['new']);
         this.visitNodeArray(node.parameters, '()');
         this.addOperatorsToAllHalstead(['=>']);
         this.continueWalk(node.type);
@@ -1079,9 +1076,10 @@ export class FileIndexer {
     private visitTemplateExpression(node: ts.TemplateExpression): boolean {
         if (this.dev) console.log(`${this.indent()}• visitTemplateExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.head);
-        for (const templateSpan of node.templateSpans) {
-            this.continueWalk(templateSpan);
-        }
+        this.visitNodeArray(node.templateSpans, '', '', false, false);
+        // for (const templateSpan of node.templateSpans) {
+        //     this.continueWalk(templateSpan);
+        // }
         return false;
     }
     private visitYieldExpression(node: ts.YieldExpression): boolean {
@@ -1622,14 +1620,131 @@ export class FileIndexer {
 
     private visitClassDeclaration(node: ts.ClassDeclaration): boolean {
         if (this.dev) console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}]`);
-        this.visitDeclarationWithBody(node, ['class']);
+
+        let lsifSymbol = this.lsifSymbol(node);
+
+        if (this.underTest) {
+            this.pushComponentToHeirarchy(this.lsifCounter.next());
+        } else {
+            let id = this.emitDeclaration(node, lsifSymbol);
+            this.pushComponentToHeirarchy(id);
+            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+        }
+
+        // if (this.underTest) {
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: COMPONENT PUSHED TO HEIRARCHY -->`
+            );
+        // node.decorators?.forEach((decorator) => {
+        //     console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: visiting decorators`);
+        //     this.continueWalk(decorator);
+        // });
+        node.modifiers?.forEach((modifier) => {
+            if (this.dev)
+                console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: visiting modifiers`);
+            this.continueWalk(modifier);
+        });
+        this.addOperatorsToAllHalstead(['class']);
+        if (node.name) this.continueWalk(node.name);
+        if ('typeParameters' in node && node.typeParameters) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: visiting typeParameters`
+                );
+            this.visitNodeArray(node.typeParameters, '<>');
+        }
+        if ('heritageClauses' in node && node.heritageClauses) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: visiting heritageClauses`,
+                    node.heritageClauses
+                );
+            this.visitNodeArray(node.heritageClauses, '', ',', false);
+        }
+        if ('members' in node && node.members) {
+            if (this.dev)
+                console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: visiting members`);
+            this.visitNodeArray(node.members, '{}', ',', true, false);
+            if (node.members.hasTrailingComma) this.addOperatorsToAllHalstead([',']);
+        }
+        this.popComponentFromHeirarchy(node);
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitClassDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT POPPED FROM HEIRARCHY <--`
+            );
         if (this.dev) console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitInterfaceDeclaration(node: ts.InterfaceDeclaration): boolean {
         if (this.dev) console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}]`);
-        this.visitDeclarationWithBody(node, ['interface']);
+
+        if (this.dev)
+            console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}]`, node.kind, node);
+        let lsifSymbol = this.lsifSymbol(node);
+
+        if (this.underTest) {
+            this.pushComponentToHeirarchy(this.lsifCounter.next());
+        } else {
+            let id = this.emitDeclaration(node, lsifSymbol);
+            this.pushComponentToHeirarchy(id);
+            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+        }
+
+        // if (this.underTest) {
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT PUSHED TO HEIRARCHY -->`
+            );
+        // node.decorators?.forEach((decorator) => {
+        //     console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] :: visiting decorators`);
+        //     this.continueWalk(decorator);
+        // });
+        node.modifiers?.forEach((modifier) => {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] :: visiting modifiers`
+                );
+            this.continueWalk(modifier);
+        });
+        this.addOperatorsToAllHalstead(['interface']);
+        if (node.name) this.continueWalk(node.name);
+        if ('heritageClauses' in node && node.heritageClauses) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] :: visiting heritageClauses`,
+                    node.heritageClauses
+                );
+            this.visitNodeArray(node.heritageClauses, '', ',', false);
+        }
+        if ('typeParameters' in node && node.typeParameters) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] :: visiting typeParameters`
+                );
+            this.visitNodeArray(node.typeParameters, '<>');
+        }
+        if ('members' in node && node.members) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] :: visiting members`
+                );
+            this.visitNodeArray(node.members, '{}', ',', true, false);
+            if (node.members.hasTrailingComma) this.addOperatorsToAllHalstead([',']);
+        }
+        this.popComponentFromHeirarchy(node);
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT POPPED FROM HEIRARCHY <--`
+            );
+
         if (this.dev) console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
@@ -1705,6 +1820,7 @@ export class FileIndexer {
                 );
             this.visitNodeArray(node.typeParameters, '<>');
         }
+        this.addOperatorsToAllHalstead(['=']);
         if ('type' in node && node.type) {
             if (!ts.isTypeAliasDeclaration(node)) this.addOperatorsToAllHalstead([':']);
             if (this.dev)
@@ -1739,7 +1855,71 @@ export class FileIndexer {
 
     private visitMethodDeclaration(node: ts.MethodDeclaration): boolean {
         if (this.dev) console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}]`);
-        this.visitDeclarationWithBody(node, []);
+
+        if (this.dev)
+            console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}]`, node.kind, node);
+        let lsifSymbol = this.lsifSymbol(node);
+
+        if (this.underTest) {
+            this.pushComponentToHeirarchy(this.lsifCounter.next());
+        } else {
+            let id = this.emitDeclaration(node, lsifSymbol);
+            this.pushComponentToHeirarchy(id);
+            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+        }
+
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitMethodDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT PUSHED TO HEIRARCHY -->`
+            );
+        // node.decorators?.forEach((decorator) => {
+        //     console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting decorators`);
+        //     this.continueWalk(decorator);
+        // });
+        node.modifiers?.forEach((modifier) => {
+            if (this.dev)
+                console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting modifiers`);
+            this.continueWalk(modifier);
+        });
+        if (node.name) this.continueWalk(node.name);
+        if ('asteriskToken' in node && node.asteriskToken) this.addOperatorsToAllHalstead(['*']);
+        if ('questionToken' in node && node.questionToken) this.addOperatorsToAllHalstead(['?']);
+        if ('parameters' in node) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting parameters`
+                );
+            this.visitNodeArray(node.parameters, '()');
+        }
+        if ('type' in node && node.type) {
+            if (!ts.isTypeAliasDeclaration(node)) this.addOperatorsToAllHalstead([':']);
+            if (this.dev)
+                console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting type`);
+            this.continueWalk(node.type);
+            node.type.end;
+        }
+        if ('typeParameters' in node && node.typeParameters) {
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting typeParameters`
+                );
+            this.visitNodeArray(node.typeParameters, '<>');
+        }
+        if ('body' in node && node.body) {
+            if (this.dev)
+                console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting body`);
+            this.continueWalk(node.body);
+        }
+        this.popComponentFromHeirarchy(node);
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitMethodDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT POPPED FROM HEIRARCHY <--`
+            );
+
         if (this.dev) console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
@@ -1762,7 +1942,8 @@ export class FileIndexer {
             | ts.NodeArray<ts.ArrayBindingElement>
             | ts.NodeArray<ts.AssertEntry>
             | ts.NodeArray<ts.JsxAttributeLike>
-            | ts.NodeArray<ts.JsxChild>,
+            | ts.NodeArray<ts.JsxChild>
+            | ts.NodeArray<ts.TemplateSpan>,
         enclosingOperator: string = '{}',
         separator: string = ',',
         includeEnclosingOperator: boolean = true,
@@ -1777,7 +1958,7 @@ export class FileIndexer {
             if ('token' in node) this.visitKeyword(node.token);
             this.continueWalk(node);
             if (i != maxLoop && includeSeparator) {
-                if (this.dev) console.log('• visitNodeArray adding separator', separator);
+                if (this.dev) console.log(`${this.indent()}• visitNodeArray adding separator`, separator);
                 this.addOperatorsToAllHalstead([separator]);
             }
         });
@@ -1954,7 +2135,7 @@ export class FileIndexer {
         if ('members' in node && node.members) {
             if (this.dev)
                 console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting members`);
-            this.visitNodeArray(node.members, '{}', ',', true, !ts.isClassDeclaration(node));
+            this.visitNodeArray(node.members, '{}', ',', true, true);
             if (node.members.hasTrailingComma) this.addOperatorsToAllHalstead([',']);
         }
         // if ('type' in node && node.type) {
