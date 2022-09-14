@@ -32,6 +32,7 @@ export class ProjectIndexer {
     private packages: Packages;
     constructor(public readonly config: ts.ParsedCommandLine, options: ProjectOptions) {
         this.options = options;
+        console.log('config.options', config.options);
         this.program = ts.createProgram(config.fileNames, config.options);
         this.checker = this.program.getTypeChecker();
         this.packages = new Packages(options.projectRoot);
@@ -57,7 +58,7 @@ export class ProjectIndexer {
             throw new Error(`no indexable files in project '${this.options.projectDisplayName}'`);
         }
 
-        const languageService = this.createLanguageService(
+        const languageService = createLanguageService(
             filesToIndex.map(function (file) {
                 return file.fileName;
             }),
@@ -74,6 +75,7 @@ export class ProjectIndexer {
             stream: this.options.progressBar ? process.stderr : writableNoopStream(),
         });
         let lastWrite = startTimestamp;
+        let filesProcessed = 0;
         for (const [index, sourceFile] of filesToIndex.entries()) {
             const title = path.relative(this.options.cwd, sourceFile.fileName);
             jobs.tick({ title });
@@ -106,8 +108,15 @@ export class ProjectIndexer {
             );
             try {
                 visitor.index();
+                filesProcessed += 1;
             } catch (error) {
                 console.error(`unexpected error indexing project root '${this.options.cwd}'`, error);
+            }
+
+            // TODO - remove this!
+            if (filesProcessed == 1) {
+                console.log('sourceFile', sourceFile.languageVersion);
+                break;
             }
         }
         this.emitReferences(declarations, references);
@@ -117,39 +126,6 @@ export class ProjectIndexer {
             process.stdout.write('\n');
         }
         console.log(`+ ${this.options.projectDisplayName} (${prettyMilliseconds(elapsed)})`);
-    }
-
-    private createLanguageService(rootFileNames: string[], options: ts.CompilerOptions): ts.LanguageService {
-        const files: ts.MapLike<{ version: number }> = {};
-
-        // initialize the list of files
-        rootFileNames.forEach((fileName) => {
-            files[fileName] = { version: 0 };
-        });
-
-        const servicesHost: ts.LanguageServiceHost = {
-            getScriptFileNames: () => rootFileNames,
-            getScriptVersion: (fileName) => files[fileName] && files[fileName].version.toString(),
-            getScriptSnapshot: (fileName) => {
-                if (!fs.existsSync(fileName)) {
-                    return undefined;
-                }
-
-                return ts.ScriptSnapshot.fromString(fs.readFileSync(fileName).toString());
-            },
-            getCurrentDirectory: () => process.cwd(),
-            getCompilationSettings: () => options,
-            getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-            fileExists: ts.sys.fileExists,
-            readFile: ts.sys.readFile,
-            readDirectory: ts.sys.readDirectory,
-            directoryExists: ts.sys.directoryExists,
-            getDirectories: ts.sys.getDirectories,
-        };
-
-        // Create the language service files
-        const services = ts.createLanguageService(servicesHost, ts.createDocumentRegistry());
-        return services;
     }
 
     public emitDocument(documentPath: string, sourceFile: ts.SourceFile): number {
@@ -296,4 +272,37 @@ function writableNoopStream(): WritableStream {
             setImmediate(callback);
         },
     });
+}
+
+export function createLanguageService(rootFileNames: string[], options: ts.CompilerOptions): ts.LanguageService {
+    const files: ts.MapLike<{ version: number }> = {};
+
+    // initialize the list of files
+    rootFileNames.forEach((fileName) => {
+        files[fileName] = { version: 0 };
+    });
+
+    const servicesHost: ts.LanguageServiceHost = {
+        getScriptFileNames: () => rootFileNames,
+        getScriptVersion: (fileName) => files[fileName] && files[fileName].version.toString(),
+        getScriptSnapshot: (fileName) => {
+            if (!fs.existsSync(fileName)) {
+                return undefined;
+            }
+
+            return ts.ScriptSnapshot.fromString(fs.readFileSync(fileName).toString());
+        },
+        getCurrentDirectory: () => process.cwd(),
+        getCompilationSettings: () => options,
+        getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+        fileExists: ts.sys.fileExists,
+        readFile: ts.sys.readFile,
+        readDirectory: ts.sys.readDirectory,
+        directoryExists: ts.sys.directoryExists,
+        getDirectories: ts.sys.getDirectories,
+    };
+
+    // Create the language service files
+    const services = ts.createLanguageService(servicesHost, ts.createDocumentRegistry());
+    return services;
 }

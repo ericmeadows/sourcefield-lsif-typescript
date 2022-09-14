@@ -1,0 +1,15 @@
+{"id":1,"type":"vertex","label":"metaData","version":"0.6.0-sourcefield","projectRoot":"file:///Users/ericmeadows/git/sourcefield-lsif-typescript/snapshots/input/react","positionEncoding":"utf-8","toolInfo":{"name":"lsif-typescript","version":"0.2.9"}}
+{"id":2,"type":"vertex","label":"project","kind":"Js/TS"}
+{"id":3,"type":"vertex","label":"document","uri":"src/LoaderInput.tsx","languageId":"typescript"}
+{"id":4,"type":"vertex","label":"resultSet"}
+{"id":5,"type":"vertex","label":"moniker","kind":0,"scheme":"","identifier":"","unique":""}
+{"id":6,"type":"vertex","label":"range","start":{"line":3,"character":0},"end":{"line":6,"character":1},"tag":{"type":"","text":"react-example::src/`LoaderInput.tsx`/Props#","kind":11,"fullRange":{"start":{"line":3,"character":0},"end":{"line":6,"character":1}}}}
+{"id":7,"type":"vertex","label":"complexityMeasurements","inV":6,"halstead":{"numOperandsTotal":5,"numOperatorsTotal":1,"numOperandsDistinct":5,"numOperatorsDistinct":5,"programVocabulary":10,"programLength":6,"calculatedEstimatedProgramLength":23.21928094887362,"volume":7,"difficulty":2.5,"effort":17.5,"timeRequiredToProgram":0.9722222222222222,"numberOfDeliveredBugs":0.0022468329164798753}}
+{"id":8,"type":"vertex","label":"resultSet"}
+{"id":9,"type":"vertex","label":"moniker","kind":0,"scheme":"","identifier":"","unique":""}
+{"id":10,"type":"vertex","label":"range","start":{"line":8,"character":13},"end":{"line":16,"character":1},"tag":{"type":"","text":"react-example::src/`LoaderInput.tsx`/LoaderInput.","kind":13,"fullRange":{"start":{"line":8,"character":13},"end":{"line":16,"character":1}}}}
+{"id":11,"type":"vertex","label":"complexityMeasurements","inV":10,"halstead":{"numOperandsTotal":11,"numOperatorsTotal":2,"numOperandsDistinct":10,"numOperatorsDistinct":10,"programVocabulary":20,"programLength":13,"calculatedEstimatedProgramLength":66.43856189774725,"volume":15,"difficulty":5.5,"effort":82.5,"timeRequiredToProgram":4.583333333333333,"numberOfDeliveredBugs":0.006317055768674653}}
+{"id":12,"type":"vertex","label":"resultSet"}
+{"id":13,"type":"vertex","label":"moniker","kind":0,"scheme":"","identifier":"","unique":""}
+{"id":14,"type":"vertex","label":"range","start":{"line":18,"character":13},"end":{"line":20,"character":1},"tag":{"type":"","text":"react-example::src/`LoaderInput.tsx`/LoaderInput2.","kind":13,"fullRange":{"start":{"line":18,"character":13},"end":{"line":20,"character":1}}}}
+{"id":15,"type":"vertex","label":"complexityMeasurements","inV":14,"halstead":{"numOperandsTotal":5,"numOperatorsTotal":2,"numOperandsDistinct":5,"numOperatorsDistinct":5,"programVocabulary":10,"programLength":7,"calculatedEstimatedProgramLength":23.21928094887362,"volume":9,"difficulty":2.5,"effort":22.5,"timeRequiredToProgram":1.25,"numberOfDeliveredBugs":0.0026566464229565274}}
