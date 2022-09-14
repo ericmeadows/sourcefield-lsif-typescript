@@ -12,6 +12,7 @@ export interface MultiProjectOptions {
     cwd: string;
     output: string;
     indexedProjects: Set<string>;
+    dev: boolean;
 }
 
 /** Configuration options to index a single TypeScript project. */
@@ -20,6 +21,7 @@ export interface ProjectOptions extends MultiProjectOptions {
     projectDisplayName: string;
     writeIndex: (index: any) => void;
     counter: Counter;
+    dev: boolean;
 }
 
 export function mainCommand(indexAction: (projects: string[], options: MultiProjectOptions) => void): Command {
@@ -38,6 +40,7 @@ export function mainCommand(indexAction: (projects: string[], options: MultiProj
         .option('--infer-tsconfig', "whether to infer the tsconfig.json file, if it's missing", false)
         .option('--output <path>', 'path to the output file', 'index.scip')
         .option('--no-progress-bar', 'whether to disable the progress bar')
+        .option('--dev', 'whether to run in dev mode')
         .argument('[projects...]')
         .action((parsedProjects, parsedOptions) => {
             indexAction(parsedProjects as string[], parsedOptions as MultiProjectOptions);

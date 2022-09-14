@@ -32,7 +32,7 @@ export class ProjectIndexer {
     private packages: Packages;
     constructor(public readonly config: ts.ParsedCommandLine, options: ProjectOptions) {
         this.options = options;
-        console.log('config.options', config.options);
+        if (this.options.dev) console.log('config.options', config.options);
         this.program = ts.createProgram(config.fileNames, config.options);
         this.checker = this.program.getTypeChecker();
         this.packages = new Packages(options.projectRoot);
@@ -104,7 +104,8 @@ export class ProjectIndexer {
                 this.options.counter,
                 declarations,
                 references,
-                languageService
+                languageService,
+                this.options.dev
             );
             try {
                 visitor.index();
@@ -113,11 +114,11 @@ export class ProjectIndexer {
                 console.error(`unexpected error indexing project root '${this.options.cwd}'`, error);
             }
 
-            // TODO - remove this!
-            if (filesProcessed == 1) {
-                console.log('sourceFile', sourceFile.languageVersion);
-                break;
-            }
+            // // TODO - remove this!
+            // if (filesProcessed == 1) {
+            //     console.log('sourceFile', sourceFile.languageVersion);
+            //     break;
+            // }
         }
         this.emitReferences(declarations, references);
         jobs.terminate();
@@ -229,7 +230,7 @@ export class ProjectIndexer {
     }
 
     private emitReferences(declarations: Map<number, DefinitionRange>, references: Map<number, DefinitionRange[]>) {
-        console.log('emitReferences');
+        if (this.options.dev) console.log('emitReferences');
         let referenceRelationships: Map<number, number[]> = new Map<number, number[]>();
 
         const declarationEntries = [...declarations.entries()];
@@ -259,7 +260,6 @@ export class ProjectIndexer {
             }
         }
 
-        // console.log('referenceRelationships', referenceRelationships);
         referenceRelationships.forEach((referenceRangeIds, definitionRangeId) => {
             this.emitReferencesForDeclaration(definitionRangeId, referenceRangeIds);
         });

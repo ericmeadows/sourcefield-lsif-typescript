@@ -21,7 +21,6 @@ import { LsifSymbol } from './LsifSymbol';
 import { Packages } from './Packages';
 import { ParentChildRelationships } from './ParentChildRelationships';
 import { Range } from './Range';
-import { normalizeToArray } from './test-data/test';
 import { keywordStrings, keywordToStringMap, operatorTokenToStringMap } from './ToStringMaps';
 
 type Descriptor = lsif.lib.codeintel.lsiftyped.Descriptor;
@@ -48,6 +47,7 @@ export class FileIndexer {
         public readonly definitions: Map<number, DefinitionRange> = new Map<number, DefinitionRange>(),
         public readonly references: Map<number, DefinitionRange[]>,
         public readonly languageService: ts.LanguageService,
+        public readonly dev: boolean,
         public readonly underTest: boolean = false
     ) {}
     public index(): void {
@@ -79,8 +79,7 @@ export class FileIndexer {
         if (this.underTest) return;
         let currentComplexityNode = this.currentComponentHeirarchy.pop();
 
-        // DEBUG
-        console.log('currentComplexityNode', currentComplexityNode);
+        if (this.dev) console.log('currentComplexityNode', currentComplexityNode);
 
         if (currentComplexityNode) {
             this.writeIndex(currentComplexityNode.getEmittable(this.lsifCounter.next()));
@@ -96,7 +95,7 @@ export class FileIndexer {
     }
 
     private visit(node: ts.Node): void {
-        console.log(`${this.indent()}• visit [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visit [${node.pos}:${node.end}]`);
         // let prevId = this.lsifCounter.get();
         if (!this.continueWalk(node)) return;
 
@@ -105,34 +104,20 @@ export class FileIndexer {
         //     ts.forEachChild(node, (node) => this.visit(node));
         //     return;
         // }
-        console.log('visit...');
+        if (this.dev) console.log('visit...');
 
         ts.forEachChild(node, (node) => {
-            console.log(`${this.indent()}• visit.child [${node.pos}:${node.end}]`);
+            if (this.dev) console.log(`${this.indent()}• visit.child [${node.pos}:${node.end}]`);
             this.visit(node);
         });
         // this.popComponentFromHeirarchy(node);
     }
 
     private continueWalk(node: ts.Node): boolean {
-        console.log('continueWalk', node.kind);
+        if (this.dev) console.log('continueWalk', node.kind);
+
         if (ts.isSourceFile(node)) return this.visitSourceFile(node);
-        // if (
-        //     ts.isEnumDeclaration(node) //||
-        //     // ts.isInterfaceDeclaration(node) ||
-        //     // ts.isTypeParameterDeclaration(node) ||
-        //     // ts.isPropertyDeclaration(node) ||
-        //     // ts.isMethodDeclaration(node) ||
-        //     // ts.isConstructorDeclaration(node) ||
-        //     // ts.isGetAccessorDeclaration(node) //||
-        //     // ts.isSetAccessorDeclaration(node) ||
-        //     // ts.isConstructSignatureDeclaration(node) //||
-        //     // ts.isVariableDeclaration(node)
-        // ) {
-        //     return this.visitDeclarationWithBody(node, []);
-        //     // console.log('node.kind', node.kind);
-        //     // return this.visitAfterDeclarationEmitted(node);
-        // }
+
         if (ts.isImportDeclaration(node)) return this.visitImportDeclaration(node);
         if (ts.isNamedImports(node)) return this.visitNamedImports(node);
         if (ts.isNamespaceImport(node)) return this.visitNamespaceImport(node);
@@ -202,7 +187,6 @@ export class FileIndexer {
         if (ts.isCallSignatureDeclaration(node)) return this.visitCallSignatureDeclaration(node);
         if (ts.isAwaitExpression(node)) return this.visitAwaitExpression(node);
         if (ts.isPostfixUnaryExpression(node)) return this.visitPostfixUnaryExpression(node);
-        // console.log('node.kind', node.kind, 'node.getText()', node.getText());
 
         if (ts.isJsxText(node)) return this.visitJsxText(node);
 
@@ -345,20 +329,15 @@ export class FileIndexer {
     }
 
     private visitSourceFile(node: ts.SourceFile) {
-        console.log(`**FILE** -->${node.fileName}`);
-        console.log(`${this.indent()}• visitSourceFile [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`**FILE** -->${node.fileName}`);
+        if (this.dev) console.log(`${this.indent()}• visitSourceFile [${node.pos}:${node.end}]`);
         this.pushComponentToHeirarchy(this.lsifCounter.get());
         this.visitBlockStatements(node.statements);
-        // for (const statement of node.statements) {
-        //     if (statement.flags && ts.NodeFlags.ThisNodeHasError) continue;
-        //     console.log('** visitSourceFile.statement', statement.pos, statement.end);
-        //     this.continueWalk(statement);
-        // }
         return false;
     }
 
     private visitImportDeclaration(node: ts.ImportDeclaration): boolean {
-        console.log(`${this.indent()}• visitImportDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitImportDeclaration [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['import']);
         if (node.importClause) {
             this.continueWalk(node.importClause);
@@ -368,162 +347,147 @@ export class FileIndexer {
         if (node.assertClause) {
             this.continueWalk(node.assertClause);
         }
-        // node.importClause?.getChildren().forEach((child) => {
-        //     this.continueWalk(child);
-        //     // console.log(`\timportChild : ${child.kind} :: ${child.getText()}`);
-        //     // child.getChildren().forEach((childOfChild) => {
-        //     //     console.log(`\t\tchildOfChild : ${childOfChild.kind} :: ${childOfChild.getText()}`);
-        //     // });
-        // });
-        console.log(`${this.indent()}• visitImportDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitImportDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitNamespaceImport(node: ts.NamespaceImport): boolean {
-        console.log(`${this.indent()}• visitNamespaceImport [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNamespaceImport [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['*', 'as']);
         this.continueWalk(node.name);
-        console.log(`${this.indent()}• visitNamespaceImport [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitNamespaceImport [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitNamedImports(node: ts.NamedImports): boolean {
-        console.log(`${this.indent()}• visitNamedImports [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNamedImports [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.elements);
-        console.log(`${this.indent()}• visitNamedImports [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitNamedImports [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitAsteriskToken(node: ts.AsteriskToken): boolean {
-        console.log(`${this.indent()}• visitAsteriskToken [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitAsteriskToken [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['*']);
-        console.log(`${this.indent()}• visitAsteriskToken [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitAsteriskToken [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitKeyword(kind: ts.SyntaxKind): boolean {
-        console.log(`${this.indent()}• visitKeyword`);
+        if (this.dev) console.log(`${this.indent()}• visitKeyword`);
         let keywordString = keywordToStringMap.get(kind);
         if (keywordString) {
             this.addOperatorsToAllHalstead([keywordString]);
         }
-        console.log(`${this.indent()}• visitKeyword <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitKeyword <<EXIT>>`);
         return false;
     }
 
     private visitOperator(kind: ts.SyntaxKind): boolean {
-        console.log(`${this.indent()}• visitOperator`, kind);
+        if (this.dev) console.log(`${this.indent()}• visitOperator`, kind);
         let keywordString = operatorTokenToStringMap.get(kind);
         if (keywordString) {
             this.addOperatorsToAllHalstead([keywordString]);
         }
-        console.log(`${this.indent()}• visitOperator <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitOperator <<EXIT>>`);
         return false;
     }
 
     private visitNumericLiteral(node: ts.NumericLiteral | ts.BigIntLiteral): boolean {
-        console.log(`${this.indent()}• visitNumericLiteral [${node.pos}:${node.end}]`);
-        // console.log(`${this.indent()}• visitNumericLiteral [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNumericLiteral [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([node.text]);
-        console.log(`${this.indent()}• visitNumericLiteral [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitNumericLiteral [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitStringLiteral(node: ts.StringLiteral) {
-        console.log(`${this.indent()}• visitStringLiteral [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitStringLiteral [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([`"${node.text}"`]);
-        console.log(`${this.indent()}• visitStringLiteral [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitStringLiteral [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitBlock(node: ts.Block): boolean {
-        console.log(`${this.indent()}• visitBlock [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitBlock [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['{}']);
         node.statements.forEach((child) => {
-            console.log(`${this.indent()}• visitBlock [${node.pos}:${node.end}], node.child`, child);
+            if (this.dev) console.log(`${this.indent()}• visitBlock [${node.pos}:${node.end}], node.child`, child);
             this.continueWalk(child);
         });
-        console.log(`${this.indent()}• visitBlock [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitBlock [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitClassStaticBlockDeclaration(node: ts.ClassStaticBlockDeclaration): boolean {
-        console.log(`${this.indent()}• visitClassStaticBlockDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitClassStaticBlockDeclaration [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['static']);
         this.continueWalk(node.body);
         return false;
     }
 
     private visitParameter(node: ts.ParameterDeclaration): boolean {
-        console.log(`${this.indent()}• visitParameter [${node.pos}:${node.end}]`);
-        // console.log(`${this.indent()}• visitParameter [${node.pos}:${node.end}] ${node.name.getText()}`);
+        if (this.dev) console.log(`${this.indent()}• visitParameter [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         if (node.dotDotDotToken) {
             this.addOperatorsToAllHalstead(['...']);
         }
         if (node.name) this.continueWalk(node.name);
-        // if (node.name) this.addOperandsToAllHalstead([node.name.getText()]);
         if (node.questionToken) {
             this.addOperatorsToAllHalstead(['?']);
         }
         if (node.type) {
-            // if (keywordToStringMap.has(node.type.kind)) return this.continueWalk(node.type);
-            // console.log('\nnode.type.kind', node.type.kind);
             this.addOperatorsToAllHalstead([':']);
-            // TODO - should this be an operator, not an operand??
-            // this.addOperandsToAllHalstead([node.type.getText()]);
             this.continueWalk(node.type);
         }
         if (node.initializer) {
             this.addOperatorsToAllHalstead(['=']);
             this.continueWalk(node.initializer);
         }
-        console.log(`${this.indent()}• visitParameter [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitParameter [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitArrayTypeNode(node: ts.ArrayTypeNode): boolean {
-        console.log(`${this.indent()}• visitArrayTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitArrayTypeNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.elementType);
         this.addOperatorsToAllHalstead(['[]']);
-        console.log(`${this.indent()}• visitArrayTypeNode [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitArrayTypeNode [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitCallExpression(node: ts.CallExpression): boolean {
-        console.log(`${this.indent()}• visitCallExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitCallExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.expression);
         this.visitNodeArray(node.arguments, '()');
-        console.log(`${this.indent()}• visitCallExpression [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitCallExpression [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitBinaryExpression(node: ts.BinaryExpression): boolean {
-        console.log(`${this.indent()}• visitBinaryExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitBinaryExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.left);
         this.continueWalk(node.operatorToken);
         this.continueWalk(node.right);
-        console.log(`${this.indent()}• visitBinaryExpression [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitBinaryExpression [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitIdentifier(node: ts.Identifier) {
-        // console.log(`${this.indent()}• visitIdentifier [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitIdentifier [${node.pos}:${node.end}]`);
         let identifier = node.escapedText.toString();
-        console.log(`${this.indent()}• visitIdentifier [${node.pos}:${node.end}]`, identifier);
+        if (this.dev) console.log(`${this.indent()}• visitIdentifier [${node.pos}:${node.end}]`, identifier);
 
         if (keywordStrings.indexOf(identifier) > -1) {
             this.addOperatorsToAllHalstead([identifier]);
             return false;
         }
         this.addOperandsToAllHalstead([identifier]);
-        console.log(`${this.indent()}• visitIdentifier [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitIdentifier [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitIfStatement(node: ts.IfStatement): boolean {
-        console.log(`${this.indent()}• visitIfStatement [${node.pos}:${node.end}]`);
-        // console.log(`${this.indent()}• visitIfStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitIfStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['if', '()']);
         this.continueWalk(node.expression);
         this.continueWalk(node.thenStatement);
@@ -531,12 +495,12 @@ export class FileIndexer {
             this.addOperatorsToAllHalstead(['else']);
             this.continueWalk(node.elseStatement);
         }
-        console.log(`${this.indent()}• visitIfStatement [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitIfStatement [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitForStatement(node: ts.ForStatement): boolean {
-        console.log(`${this.indent()}• visitForStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitForStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['for', '()']);
         if (node.initializer) this.continueWalk(node.initializer);
         this.addOperatorsToAllHalstead([';']);
@@ -544,88 +508,79 @@ export class FileIndexer {
         this.addOperatorsToAllHalstead([';']);
         if (node.incrementor) this.continueWalk(node.incrementor);
         this.continueWalk(node.statement);
-
-        // this.continueWalk(node.expression);
-        // this.continueWalk(node.thenStatement);
-        // if (node.elseStatement) {
-        //     this.addOperatorsToAllHalstead(['else']);
-        //     this.continueWalk(node.elseStatement);
-        // }
-        console.log(`${this.indent()}• visitForStatement [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitForStatement [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitPrefixUnaryExpression(node: ts.PrefixUnaryExpression): boolean {
-        console.log(`${this.indent()}• visitPrefixUnaryExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPrefixUnaryExpression [${node.pos}:${node.end}]`);
         this.visitOperator(node.operator);
         this.continueWalk(node.operand);
-        console.log(`${this.indent()}• visitPrefixUnaryExpression [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitPrefixUnaryExpression [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitPostfixUnaryExpression(node: ts.PostfixUnaryExpression): boolean {
-        console.log(`${this.indent()}• visitPostfixUnaryExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPostfixUnaryExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.operand);
         this.visitOperator(node.operator);
-        console.log(`${this.indent()}• visitPostfixUnaryExpression [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitPostfixUnaryExpression [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitSyntaxList(node: ts.SyntaxList): boolean {
-        console.log(`${this.indent()}• visitSyntaxList [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSyntaxList [${node.pos}:${node.end}]`);
         node.getChildren().forEach((child) => {
             this.continueWalk(child);
         });
-        console.log(`${this.indent()}• visitSyntaxList [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitSyntaxList [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitExpressionStatement(node: ts.ExpressionStatement): boolean {
-        console.log(
-            `${this.indent()}• visitExpressionStatement [${node.pos}:${node.end}], node.expression`,
-            node.expression
-        );
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitExpressionStatement [${node.pos}:${node.end}], node.expression`,
+                node.expression
+            );
         this.continueWalk(node.expression);
-        // node.getChildren().forEach((child) => {
-        //     this.continueWalk(child);
-        // });
-        console.log(`${this.indent()}• visitExpressionStatement [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitExpressionStatement [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitReturnStatement(node: ts.ReturnStatement): boolean {
-        console.log(`${this.indent()}• visitReturnStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitReturnStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['return']);
         if (node.expression) return this.continueWalk(node.expression);
-        console.log(`${this.indent()}• visitReturnStatement [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitReturnStatement [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitPropertyAccessExpression(node: ts.PropertyAccessExpression): boolean {
-        console.log(
-            `${this.indent()}• visitPropertyAccessExpression - ${node.expression}.${node.name.escapedText} - [${
-                node.pos
-            }:${node.end}]`,
-            node
-        );
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitPropertyAccessExpression - ${node.expression}.${node.name.escapedText} - [${
+                    node.pos
+                }:${node.end}]`,
+                node
+            );
         this.continueWalk(node.expression);
         if (node.questionDotToken) this.addOperatorsToAllHalstead(['?']);
         this.addOperatorsToAllHalstead(['.']);
         this.continueWalk(node.name);
-        console.log(`${this.indent()}• visitPropertyAccessExpression [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitPropertyAccessExpression [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitComputedPropertyName(node: ts.ComputedPropertyName): boolean {
-        console.log(`${this.indent()}• visitComputedPropertyName [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitComputedPropertyName [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['[]']);
         this.continueWalk(node.expression);
         return false;
     }
 
     private visitTypeParameterDeclaration(node: ts.TypeParameterDeclaration): boolean {
-        console.log(`${this.indent()}• visitTypeParameterDeclaration [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => this.continueWalk(decorator));
+        if (this.dev) console.log(`${this.indent()}• visitTypeParameterDeclaration [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         if (node.constraint) {
             this.addOperatorsToAllHalstead(['[]']);
@@ -634,39 +589,37 @@ export class FileIndexer {
             this.continueWalk(node.constraint);
             return false;
         }
-        if (node.default) throw new Error('************************ URGENT & NEW, node.default');
+        if (node.default) {
+            this.addOperatorsToAllHalstead(['=']);
+            this.continueWalk(node.default);
+        }
         if (node.expression) throw new Error('************************ URGENT & NEW, node.expression');
         this.continueWalk(node.name);
-        console.log(`${this.indent()}• visitTypeParameterDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeParameterDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitTypeReferenceNode(node: ts.TypeReferenceNode) {
-        console.log(`${this.indent()}• visitTypeReferenceNode [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => {
-        //     this.continueWalk(decorator);
-        // });
+        if (this.dev) console.log(`${this.indent()}• visitTypeReferenceNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.typeName);
         if (node.typeArguments) {
             this.addOperatorsToAllHalstead(['<>']);
             this.visitNodeArray(node.typeArguments, '', ',', false);
         }
-        console.log(`${this.indent()}• visitTypeReferenceNode [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeReferenceNode [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitVariableStatement(node: ts.VariableStatement): boolean {
-        console.log(`${this.indent()}• visitVariableStatement [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => this.continueWalk(decorator));
+        if (this.dev) console.log(`${this.indent()}• visitVariableStatement [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.continueWalk(node.declarationList);
-        console.log(`${this.indent()}• visitVariableStatement [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitVariableStatement [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitVariableDeclarationList(node: ts.VariableDeclarationList): boolean {
-        console.log(`${this.indent()}• visitVariableDeclarationList [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => this.continueWalk(decorator));
+        if (this.dev) console.log(`${this.indent()}• visitVariableDeclarationList [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
 
         if (node.flags == ts.NodeFlags.None || node.flags & ts.NodeFlags.None) this.addOperatorsToAllHalstead(['var']);
@@ -676,17 +629,17 @@ export class FileIndexer {
 
         const maxLoop = node.declarations.length - 1;
         node.declarations.forEach((declaration, i) => {
-            console.log(`${this.indent()}• visitVariableDeclarationList visiting declaration`, declaration.kind);
+            if (this.dev)
+                console.log(`${this.indent()}• visitVariableDeclarationList visiting declaration`, declaration.kind);
             this.continueWalk(declaration);
             if (i != maxLoop) this.addOperatorsToAllHalstead([',']);
         });
-        console.log(`${this.indent()}• visitVariableDeclarationList [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitVariableDeclarationList [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitVariableDeclaration(node: ts.VariableDeclaration): boolean {
-        console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => this.continueWalk(decorator));
+        if (this.dev) console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.continueWalk(node.name);
         if (node.type) {
@@ -699,50 +652,49 @@ export class FileIndexer {
             this.continueWalk(node.initializer);
         }
         if (node.exclamationToken) this.continueWalk(node.exclamationToken);
-        console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitArrowFunction(node: ts.ArrowFunction): boolean {
-        console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`);
         // TODO - needs more investigation into how to get it to work
         // if (node.parameters.pos != node.parameters.end)
         this.visitNodeArray(node.parameters, '()', ','); //, node.parameters.length != 1);
         if (node.equalsGreaterThanToken.pos != node.equalsGreaterThanToken.end) this.addOperatorsToAllHalstead(['=>']);
         this.continueWalk(node.body);
         node.body.flags;
-        console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitAwaitExpression(node: ts.AwaitExpression): boolean {
-        console.log(`${this.indent()}• visitAwaitExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitAwaitExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['await']);
         this.continueWalk(node.expression);
         return false;
     }
 
     private visitHeritageClause(node: ts.HeritageClause): boolean {
-        console.log(`${this.indent()}• visitHeritageClause [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => this.continueWalk(decorator));
+        if (this.dev) console.log(`${this.indent()}• visitHeritageClause [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.visitNodeArray(node.types, '', ',', false);
-        console.log(`${this.indent()}• visitHeritageClause [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitHeritageClause [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitExpressionWithTypeArguments(node: ts.ExpressionWithTypeArguments): boolean {
-        console.log(`${this.indent()}• visitExpressionWithTypeArguments [${node.pos}:${node.end}]`);
-        // node.decorators?.forEach((decorator) => this.continueWalk(decorator));
+        if (this.dev) console.log(`${this.indent()}• visitExpressionWithTypeArguments [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.continueWalk(node.expression);
         if (node.typeArguments) this.visitNodeArray(node.typeArguments, '<>');
-        console.log(`${this.indent()}• visitExpressionWithTypeArguments [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev)
+            console.log(`${this.indent()}• visitExpressionWithTypeArguments [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitNewExpression(node: ts.NewExpression): boolean {
-        console.log(`${this.indent()}• visitNewExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNewExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['new']);
         this.continueWalk(node.expression);
         if (node.arguments) this.visitNodeArray(node.arguments, '()');
@@ -750,13 +702,13 @@ export class FileIndexer {
     }
 
     private visitTypeLiteralNode(node: ts.TypeLiteralNode): boolean {
-        console.log(`${this.indent()}• visitTypeLiteralNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeLiteralNode [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.members, '{}', ',');
         return false;
     }
 
     private visitPropertySignature(node: ts.PropertySignature): boolean {
-        console.log(`${this.indent()}• visitPropertySignature [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPropertySignature [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         if (node.questionToken) this.addOperatorsToAllHalstead(['?']);
         if (node.type) {
@@ -767,7 +719,7 @@ export class FileIndexer {
     }
 
     private visitExportAssignment(node: ts.ExportAssignment): boolean {
-        console.log(`${this.indent()}• visitExportAssignment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitExportAssignment [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['export']);
         if (node.isExportEquals) {
             this.addOperatorsToAllHalstead(['=']);
@@ -779,17 +731,17 @@ export class FileIndexer {
     }
 
     private visitModuleBlock(node: ts.ModuleBlock): boolean {
-        console.log(`${this.indent()}• visitModuleBlock [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitModuleBlock [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['{}']);
         this.visitBlockStatements(node.statements);
         return false;
     }
 
     private visitBlockStatements(statements: ts.NodeArray<ts.Statement>): boolean {
-        console.log(`${this.indent()}• visitBlockStatements`, statements);
+        if (this.dev) console.log(`${this.indent()}• visitBlockStatements`, statements);
         for (const statement of statements) {
             if (statement.flags & ts.NodeFlags.ThisNodeHasError) continue;
-            console.log('** visitSourceFile.statement', statement.pos, statement.end);
+            if (this.dev) console.log('** visitSourceFile.statement', statement.pos, statement.end);
             this.continueWalk(statement);
         }
 
@@ -797,12 +749,12 @@ export class FileIndexer {
     }
 
     private visitSetAccesssor(node: ts.SetAccessorDeclaration): boolean {
-        console.log(`${this.indent()}• visitSetAccessor [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSetAccessor [${node.pos}:${node.end}]`);
         return false;
     }
 
     private visitFunctionTypeNode(node: ts.FunctionTypeNode): boolean {
-        console.log(`${this.indent()}• visitFunctionTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitFunctionTypeNode [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.parameters, '()');
         this.addOperatorsToAllHalstead(['=>']);
         this.continueWalk(node.type);
@@ -810,51 +762,51 @@ export class FileIndexer {
     }
 
     private visitBreakStatement(node: ts.BreakStatement): boolean {
-        console.log(`${this.indent()}• visitBreakStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitBreakStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['break']);
         return false;
     }
 
     private visitContinueStatement(node: ts.ContinueStatement): boolean {
-        console.log(`${this.indent()}• visitContinueStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitContinueStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['continue']);
         return false;
     }
 
     private visitParenthesizedExpression(node: ts.ParenthesizedExpression): boolean {
-        console.log(`${this.indent()}• visitParenthesizedExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitParenthesizedExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['()']);
         this.continueWalk(node.expression);
         return false;
     }
 
     private visitUnionTypeNode(node: ts.UnionTypeNode): boolean {
-        console.log(`${this.indent()}• visitUnionTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitUnionTypeNode [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.types, '', '|', false);
         return false;
     }
 
     private visitTypeQueryNode(node: ts.TypeQueryNode): boolean {
-        console.log(`${this.indent()}• visitTypeQueryNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeQueryNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['typeof']);
         this.continueWalk(node.exprName);
         return false;
     }
 
     private visitArrayLiteralExpression(node: ts.ArrayLiteralExpression): boolean {
-        console.log(`${this.indent()}• visitArrayLiteralExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitArrayLiteralExpression [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.elements, '[]');
         return false;
     }
 
     private visitObjectBindingPattern(node: ts.ObjectBindingPattern): boolean {
-        console.log(`${this.indent()}• visitObjectBindingPattern [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitObjectBindingPattern [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.elements, '{}');
         return false;
     }
 
     private visitBindingElement(node: ts.BindingElement): boolean {
-        console.log(`${this.indent()}• visitBindingElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitBindingElement [${node.pos}:${node.end}]`);
         if (node.propertyName) {
             this.continueWalk(node.propertyName);
             this.addOperatorsToAllHalstead([':']);
@@ -864,19 +816,19 @@ export class FileIndexer {
     }
 
     private visitObjectLiteralExpression(node: ts.ObjectLiteralExpression): boolean {
-        console.log(`${this.indent()}• visitObjectLiteralExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitObjectLiteralExpression [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.properties, '{}');
         return false;
     }
 
     private visitShorthandPropertyAssignment(node: ts.ShorthandPropertyAssignment): boolean {
-        console.log(`${this.indent()}• visitShorthandPropertyAssignment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitShorthandPropertyAssignment [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         return false;
     }
 
     private visitPropertyAssignment(node: ts.PropertyAssignment): boolean {
-        console.log(`${this.indent()}• visitPropertyAssignment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPropertyAssignment [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         this.addOperatorsToAllHalstead([':']);
         this.continueWalk(node.initializer);
@@ -884,7 +836,7 @@ export class FileIndexer {
     }
 
     private visitQualifiedName(node: ts.QualifiedName): boolean {
-        console.log(`${this.indent()}• visitQualifiedName [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitQualifiedName [${node.pos}:${node.end}]`);
         this.continueWalk(node.left);
         this.addOperatorsToAllHalstead(['.']);
         this.continueWalk(node.right);
@@ -892,67 +844,67 @@ export class FileIndexer {
     }
 
     private visitPrivateIdentifier(node: ts.PrivateIdentifier): boolean {
-        console.log(`${this.indent()}• visitPrivateIdentifier [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPrivateIdentifier [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([node.escapedText.toString()]);
         return false;
     }
 
     /////////
     private visitJsxText(node: ts.JsxText): boolean {
-        console.log(`${this.indent()}• visitJsxText [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxText [${node.pos}:${node.end}]`);
         let text = node.text.replace(/(\r\n|\n|\r|\s)/gm, '');
         if (text == '') return false;
         this.addOperandsToAllHalstead([`"${text}"`]);
         return false;
     }
     private visitRegularExpressionLiteral(node: ts.RegularExpressionLiteral): boolean {
-        console.log(`${this.indent()}• visitRegularExpressionLiteral [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitRegularExpressionLiteral [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([node.text]);
         return false;
     }
     private visitNoSubstitutionTemplateLiteral(node: ts.NoSubstitutionTemplateLiteral): boolean {
-        console.log(`${this.indent()}• visitNoSubstitutionTemplateLiteral [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNoSubstitutionTemplateLiteral [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([`"${node.text}"`]);
         return false;
     }
     private visitTemplateHead(node: ts.TemplateHead): boolean {
-        console.log(`${this.indent()}• visitTemplateHead [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateHead [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([`"${node.text}"`]);
         return false;
     }
     private visitTemplateMiddle(node: ts.TemplateMiddle): boolean {
-        console.log(`${this.indent()}• visitTemplateMiddle [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateMiddle [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([`"${node.text}"`]);
         return false;
     }
     private visitTemplateTail(node: ts.TemplateTail): boolean {
-        console.log(`${this.indent()}• visitTemplateTail [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateTail [${node.pos}:${node.end}]`);
         this.addOperandsToAllHalstead([`"${node.text}"`]);
         return false;
     }
     private visitDotDotDotToken(node: ts.DotDotDotToken): boolean {
-        console.log(`${this.indent()}• visitDotDotDotToken [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitDotDotDotToken [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['...']);
         return false;
     }
     private visitPlusToken(node: ts.PlusToken): boolean {
-        console.log(`${this.indent()}• visitPlusToken [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPlusToken [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['+']);
         return false;
     }
     private visitMinusToken(node: ts.MinusToken): boolean {
-        console.log(`${this.indent()}• visitMinusToken [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitMinusToken [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['-']);
         return false;
     }
     private visitDecorator(node: ts.Decorator): boolean {
-        console.log(`${this.indent()}• visitDecorator [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitDecorator [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['@']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitIndexSignatureDeclaration(node: ts.IndexSignatureDeclaration): boolean {
-        console.log(`${this.indent()}• visitIndexSignatureDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitIndexSignatureDeclaration [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['[]']);
         this.visitNodeArray(node.parameters, '', ',', false);
         this.addOperatorsToAllHalstead([':']);
@@ -960,7 +912,7 @@ export class FileIndexer {
         return false;
     }
     private visitTypePredicateNode(node: ts.TypePredicateNode): boolean {
-        console.log(`${this.indent()}• visitTypePredicateNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypePredicateNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.parameterName);
         if (node.type) {
             this.addOperatorsToAllHalstead(['is']);
@@ -969,7 +921,7 @@ export class FileIndexer {
         return false;
     }
     private visitConstructorTypeNode(node: ts.ConstructorTypeNode): boolean {
-        console.log(`${this.indent()}• visitConstructorTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitConstructorTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['=', 'new']);
         this.visitNodeArray(node.parameters, '()');
         this.addOperatorsToAllHalstead(['=>']);
@@ -977,29 +929,29 @@ export class FileIndexer {
         return false;
     }
     private visitTupleTypeNode(node: ts.TupleTypeNode): boolean {
-        console.log(`${this.indent()}• visitTupleTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTupleTypeNode [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.elements, '[]');
         return false;
     }
     private visitOptionalTypeNode(node: ts.OptionalTypeNode): boolean {
-        console.log(`${this.indent()}• visitOptionalTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitOptionalTypeNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.type);
         this.addOperatorsToAllHalstead(['?']);
         return false;
     }
     private visitRestTypeNode(node: ts.RestTypeNode): boolean {
-        console.log(`${this.indent()}• visitRestTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitRestTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['...']);
         this.continueWalk(node.type);
         return false;
     }
     private visitIntersectionTypeNode(node: ts.IntersectionTypeNode): boolean {
-        console.log(`${this.indent()}• visitIntersectionTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitIntersectionTypeNode [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.types, '', '&', false);
         return false;
     }
     private visitConditionalTypeNode(node: ts.ConditionalTypeNode): boolean {
-        console.log(`${this.indent()}• visitConditionalTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitConditionalTypeNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.checkType);
         this.addOperatorsToAllHalstead(['extends']);
         this.continueWalk(node.extendsType);
@@ -1010,37 +962,37 @@ export class FileIndexer {
         return false;
     }
     private visitInferTypeNode(node: ts.InferTypeNode): boolean {
-        console.log(`${this.indent()}• visitInferTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitInferTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['infer']);
         this.continueWalk(node.typeParameter);
         return false;
     }
     private visitParenthesizedTypeNode(node: ts.ParenthesizedTypeNode): boolean {
-        console.log(`${this.indent()}• visitParenthesizedTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitParenthesizedTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['()']);
         this.continueWalk(node.type);
         return false;
     }
     private visitThisTypeNode(node: ts.ThisTypeNode): boolean {
-        console.log(`${this.indent()}• visitThisTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitThisTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['this']);
         return false;
     }
     private visitTypeOperatorNode(node: ts.TypeOperatorNode): boolean {
-        console.log(`${this.indent()}• visitTypeOperatorNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeOperatorNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead([keywordToStringMap.get(node.operator)!]);
         this.continueWalk(node.type);
         return false;
     }
     private visitIndexedAccessTypeNode(node: ts.IndexedAccessTypeNode): boolean {
-        console.log(`${this.indent()}• visitIndexedAccessTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitIndexedAccessTypeNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.objectType);
         this.addOperatorsToAllHalstead(['[]']);
         this.continueWalk(node.indexType);
         return false;
     }
     private visitMappedTypeNode(node: ts.MappedTypeNode): boolean {
-        console.log(`${this.indent()}• visitMappedTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitMappedTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['{}']);
         this.continueWalk(node.typeParameter);
         if (node.type) {
@@ -1050,12 +1002,12 @@ export class FileIndexer {
         return false;
     }
     private visitLiteralTypeNode(node: ts.LiteralTypeNode): boolean {
-        console.log(`${this.indent()}• visitLiteralTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitLiteralTypeNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.literal);
         return false;
     }
     private visitImportTypeNode(node: ts.ImportTypeNode): boolean {
-        console.log(`${this.indent()}• visitImportTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitImportTypeNode [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['typeof', 'import', '()']);
         this.continueWalk(node.argument);
         this.addOperatorsToAllHalstead(['.']);
@@ -1063,63 +1015,63 @@ export class FileIndexer {
         return false;
     }
     private visitTemplateLiteralTypeSpan(node: ts.TemplateLiteralTypeSpan): boolean {
-        console.log(`${this.indent()}• visitTemplateLiteralTypeSpan [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateLiteralTypeSpan [${node.pos}:${node.end}]`);
         this.continueWalk(node.type);
         this.continueWalk(node.literal);
         return false;
     }
     private visitTemplateLiteralTypeNode(node: ts.TemplateLiteralTypeNode): boolean {
-        console.log(`${this.indent()}• visitTemplateLiteralTypeNode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateLiteralTypeNode [${node.pos}:${node.end}]`);
         this.continueWalk(node.head);
         this.visitNodeArray(node.templateSpans, '', ',', false);
         return false;
     }
     private visitArrayBindingPattern(node: ts.ArrayBindingPattern): boolean {
-        console.log(`${this.indent()}• visitArrayBindingPattern [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitArrayBindingPattern [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.elements, '[]');
         return false;
     }
     private visitElementAccessExpression(node: ts.ElementAccessExpression): boolean {
-        console.log(`${this.indent()}• visitElementAccessExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitElementAccessExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.expression);
         this.addOperatorsToAllHalstead(['[]']);
         this.continueWalk(node.argumentExpression);
         return false;
     }
     private visitTaggedTemplateExpression(node: ts.TaggedTemplateExpression): boolean {
-        console.log(`${this.indent()}• visitTaggedTemplateExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTaggedTemplateExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.tag);
         this.continueWalk(node.template);
-        console.log(`${this.indent()}• visitTaggedTemplateExpression <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitTaggedTemplateExpression <<EXIT>>`);
         return false;
     }
     private visitTypeAssertionExpression(node: ts.TypeAssertion): boolean {
-        console.log(`${this.indent()}• visitTypeAssertionExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeAssertionExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['<>']);
         this.continueWalk(node.type);
         this.continueWalk(node.expression);
         return false;
     }
     private visitDeleteExpression(node: ts.DeleteExpression): boolean {
-        console.log(`${this.indent()}• visitDeleteExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitDeleteExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['delete']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitTypeOfExpression(node: ts.TypeOfExpression): boolean {
-        console.log(`${this.indent()}• visitTypeOfExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeOfExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['typeof']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitVoidExpression(node: ts.VoidExpression): boolean {
-        console.log(`${this.indent()}• visitVoidExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitVoidExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['void']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitConditionalExpression(node: ts.ConditionalExpression): boolean {
-        console.log(`${this.indent()}• visitConditionalExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitConditionalExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.condition);
         this.addOperatorsToAllHalstead(['?']);
         this.continueWalk(node.whenTrue);
@@ -1128,7 +1080,7 @@ export class FileIndexer {
         return false;
     }
     private visitTemplateExpression(node: ts.TemplateExpression): boolean {
-        console.log(`${this.indent()}• visitTemplateExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.head);
         for (const templateSpan of node.templateSpans) {
             this.continueWalk(templateSpan);
@@ -1136,20 +1088,20 @@ export class FileIndexer {
         return false;
     }
     private visitYieldExpression(node: ts.YieldExpression): boolean {
-        console.log(`${this.indent()}• visitYieldExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitYieldExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['yield']);
         if (node.asteriskToken) this.addOperatorsToAllHalstead(['*']);
         if (node.expression) this.continueWalk(node.expression);
         return false;
     }
     private visitSpreadElement(node: ts.SpreadElement): boolean {
-        console.log(`${this.indent()}• visitSpreadElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSpreadElement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['...']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitClassExpression(node: ts.ClassExpression): boolean {
-        console.log(`${this.indent()}• visitClassExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitClassExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['class']);
         if (node.heritageClauses) {
             this.visitNodeArray(node.heritageClauses, '', ',', false);
@@ -1160,60 +1112,61 @@ export class FileIndexer {
         return false;
     }
     private visitOmittedExpression(node: ts.OmittedExpression): boolean {
-        console.log(`${this.indent()}• visitOmittedExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitOmittedExpression [${node.pos}:${node.end}]`);
         return false;
     }
     private visitAsExpression(node: ts.AsExpression): boolean {
-        console.log(`${this.indent()}• visitAsExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitAsExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.expression);
         this.addOperatorsToAllHalstead(['as']);
         this.continueWalk(node.type);
         return false;
     }
     private visitNonNullExpression(node: ts.NonNullExpression): boolean {
-        console.log(`${this.indent()}• visitNonNullExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNonNullExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.expression);
         this.addOperatorsToAllHalstead(['!']);
         return false;
     }
     private visitMetaProperty(node: ts.MetaProperty): boolean {
-        console.log(`${this.indent()}• visitMetaProperty [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitMetaProperty [${node.pos}:${node.end}]`);
         this.visitKeyword(node.keywordToken);
         this.addOperatorsToAllHalstead(['.']);
         this.continueWalk(node.name);
         return false;
     }
     private visitSyntheticExpression(node: ts.SyntheticExpression): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitSyntheticExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitSyntheticExpression [${node.pos}:${node.end}]`);
         return false;
     }
     private visitPartiallyEmittedExpression(node: ts.PartiallyEmittedExpression): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitPartiallyEmittedExpression [${node.pos}:${node.end}]`);
+        if (this.dev)
+            console.log(`!!!!!!!!!${this.indent()}• visitPartiallyEmittedExpression [${node.pos}:${node.end}]`);
         return false;
     }
     private visitCommaListExpression(node: ts.CommaListExpression): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitCommaListExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitCommaListExpression [${node.pos}:${node.end}]`);
         return false;
     }
     private visitTemplateSpan(node: ts.TemplateSpan): boolean {
-        console.log(`${this.indent()}• visitTemplateSpan [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTemplateSpan [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['${}']);
         this.continueWalk(node.expression);
         this.continueWalk(node.literal);
         return false;
     }
     private visitSemicolonClassElement(node: ts.SemicolonClassElement): boolean {
-        console.log(`${this.indent()}• visitSemicolonClassElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSemicolonClassElement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead([';']);
         return false;
     }
     private visitEmptyStatement(node: ts.EmptyStatement): boolean {
-        console.log(`${this.indent()}• visitEmptyStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitEmptyStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead([';']);
         return false;
     }
     private visitDoStatement(node: ts.DoStatement): boolean {
-        console.log(`${this.indent()}• visitDoStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitDoStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['do']);
         this.continueWalk(node.statement);
         this.addOperatorsToAllHalstead(['while', '()']);
@@ -1221,14 +1174,14 @@ export class FileIndexer {
         return false;
     }
     private visitWhileStatement(node: ts.WhileStatement): boolean {
-        console.log(`${this.indent()}• visitWhileStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitWhileStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['while', '()']);
         this.continueWalk(node.expression);
         this.continueWalk(node.statement);
         return false;
     }
     private visitForInForOfStatement(node: ts.ForInStatement | ts.ForOfStatement, inOf: string): boolean {
-        console.log(`${this.indent()}• visitForInStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitForInStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['for', '()']);
         this.continueWalk(node.initializer);
         this.addOperatorsToAllHalstead([inOf]);
@@ -1237,93 +1190,94 @@ export class FileIndexer {
         return false;
     }
     private visitWithStatement(node: ts.WithStatement): boolean {
-        console.log(`${this.indent()}• visitWithStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitWithStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['with', '()']);
         this.continueWalk(node.expression);
         this.continueWalk(node.statement);
         return false;
     }
     private visitSwitchStatement(node: ts.SwitchStatement): boolean {
-        console.log(`${this.indent()}• visitSwitchStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSwitchStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['switch', '()']);
         this.continueWalk(node.expression);
         this.continueWalk(node.caseBlock);
         return false;
     }
     private visitLabeledStatement(node: ts.LabeledStatement): boolean {
-        console.log(`${this.indent()}• visitLabeledStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitLabeledStatement [${node.pos}:${node.end}]`);
         this.continueWalk(node.label);
         this.addOperatorsToAllHalstead([':']);
         this.continueWalk(node.statement);
         return false;
     }
     private visitThrowStatement(node: ts.ThrowStatement): boolean {
-        console.log(`${this.indent()}• visitThrowStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitThrowStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['throw']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitTryStatement(node: ts.TryStatement): boolean {
-        console.log(`${this.indent()}• visitTryStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTryStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['try']);
         this.visitBlock(node.tryBlock);
         if (node.catchClause) this.continueWalk(node.catchClause);
         return false;
     }
     private visitDebuggerStatement(node: ts.DebuggerStatement): boolean {
-        console.log(`${this.indent()}• visitDebuggerStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitDebuggerStatement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['debugger']);
         return false;
     }
     private visitEnumDeclaration(node: ts.EnumDeclaration): boolean {
-        console.log(`${this.indent()}• visitEnumDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitEnumDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['enum']);
         return false;
     }
     private visitCaseBlock(node: ts.CaseBlock): boolean {
-        console.log(`${this.indent()}• visitCaseBlock [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitCaseBlock [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['{}']);
         this.visitNodeArray(node.clauses, '', '', false, false);
         return false;
     }
     private visitNamespaceExportDeclaration(node: ts.NamespaceExportDeclaration): boolean {
-        console.log(`${this.indent()}• visitNamespaceExportDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNamespaceExportDeclaration [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['export', 'as', 'namespace']);
         this.continueWalk(node.name);
         return false;
     }
     private visitImportClause(node: ts.ImportClause): boolean {
-        console.log(`${this.indent()}• visitImportClause [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitImportClause [${node.pos}:${node.end}]`);
         if (node.isTypeOnly) this.addOperatorsToAllHalstead(['type']);
         if (node.name) this.continueWalk(node.name);
         if (node.namedBindings) this.continueWalk(node.namedBindings);
         return false;
     }
     private visitImportTypeAssertionContainer(node: ts.ImportTypeAssertionContainer): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitImportTypeAssertionContainer [${node.pos}:${node.end}]`);
+        if (this.dev)
+            console.log(`!!!!!!!!!${this.indent()}• visitImportTypeAssertionContainer [${node.pos}:${node.end}]`);
         return false;
     }
     private visitAssertClause(node: ts.AssertClause): boolean {
-        console.log(`${this.indent()}• visitAssertClause [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitAssertClause [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['assert']);
         this.visitNodeArray(node.elements);
         return false;
     }
     private visitAssertEntry(node: ts.AssertEntry): boolean {
-        console.log(`${this.indent()}• visitAssertEntry [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitAssertEntry [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         this.addOperatorsToAllHalstead([':']);
         this.continueWalk(node.value);
         return false;
     }
     private visitNamespaceExport(node: ts.NamespaceExport): boolean {
-        console.log(`${this.indent()}• visitNamespaceExport [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNamespaceExport [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['*', 'as']);
         this.continueWalk(node.name);
         return false;
     }
     private visitImportSpecifier(node: ts.ImportSpecifier): boolean {
-        console.log(`${this.indent()}• visitImportSpecifier [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitImportSpecifier [${node.pos}:${node.end}]`);
         if (node.isTypeOnly) this.addOperatorsToAllHalstead(['type']);
         if (node.propertyName) {
             this.continueWalk(node.propertyName);
@@ -1333,25 +1287,25 @@ export class FileIndexer {
         return false;
     }
     private visitNamedExports(node: ts.NamedExports): boolean {
-        console.log(`${this.indent()}• visitNamedExports [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitNamedExports [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.elements, '{}', ',');
         return false;
     }
     private visitExportSpecifier(node: ts.ExportSpecifier): boolean {
-        console.log(`${this.indent()}• visitExportSpecifier [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitExportSpecifier [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         return false;
     }
     private visitMissingDeclaration(node: ts.MissingDeclaration): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitMissingDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitMissingDeclaration [${node.pos}:${node.end}]`);
         return false;
     }
     private visitNotEmittedStatement(node: ts.NotEmittedStatement): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitNotEmittedStatement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitNotEmittedStatement [${node.pos}:${node.end}]`);
         return false;
     }
     private visitExternalModuleReference(node: ts.ExternalModuleReference): boolean {
-        console.log(`${this.indent()}• visitExternalModuleReference [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitExternalModuleReference [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['require', '()']);
         this.continueWalk(node.expression);
         return false;
@@ -1364,49 +1318,49 @@ export class FileIndexer {
     }
 
     private visitJsxElement(node: ts.JsxElement): boolean {
-        console.log(`${this.indent()}• visitJsxElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxElement [${node.pos}:${node.end}]`);
         this.continueWalk(node.openingElement);
         this.visitNodeArray(node.children, '', '', false, false);
         this.continueWalk(node.closingElement);
         return false;
     }
     private visitJsxSelfClosingElement(node: ts.JsxSelfClosingElement): boolean {
-        console.log(`${this.indent()}• visitJsxSelfClosingElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxSelfClosingElement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['< />']);
         this.visitJsxElementStartingNode(node);
         return false;
     }
     private visitJsxOpeningElement(node: ts.JsxOpeningElement): boolean {
-        console.log(`${this.indent()}• visitJsxOpeningElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxOpeningElement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['<>']);
         this.visitJsxElementStartingNode(node);
         return false;
     }
     private visitJsxClosingElement(node: ts.JsxClosingElement): boolean {
-        console.log(`${this.indent()}• visitJsxClosingElement [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxClosingElement [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['</>']);
         this.continueWalk(node.tagName);
         return false;
     }
     private visitJsxFragment(node: ts.JsxFragment): boolean {
-        console.log(`${this.indent()}• visitJsxFragment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxFragment [${node.pos}:${node.end}]`);
         this.continueWalk(node.openingFragment);
         this.visitNodeArray(node.children, '', '', false, false);
         this.continueWalk(node.closingFragment);
         return false;
     }
     private visitJsxOpeningFragment(node: ts.JsxOpeningFragment): boolean {
-        console.log(`${this.indent()}• visitJsxOpeningFragment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxOpeningFragment [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['<>']);
         return false;
     }
     private visitJsxClosingFragment(node: ts.JsxClosingFragment): boolean {
-        console.log(`${this.indent()}• visitJsxClosingFragment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxClosingFragment [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['</>']);
         return false;
     }
     private visitJsxAttribute(node: ts.JsxAttribute): boolean {
-        console.log(`${this.indent()}• visitJsxAttribute [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxAttribute [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         if (node.initializer) {
             this.addOperatorsToAllHalstead(['=']);
@@ -1415,25 +1369,25 @@ export class FileIndexer {
         return false;
     }
     private visitJsxAttributes(node: ts.JsxAttributes): boolean {
-        console.log(`${this.indent()}• visitJsxAttributes [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxAttributes [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.properties, '', '', false, false);
         return false;
     }
     private visitJsxSpreadAttribute(node: ts.JsxSpreadAttribute): boolean {
-        console.log(`${this.indent()}• visitJsxSpreadAttribute [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxSpreadAttribute [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['...']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitJsxExpression(node: ts.JsxExpression): boolean {
-        console.log(`${this.indent()}• visitJsxExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitJsxExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['{}']);
         if (node.dotDotDotToken) this.addOperatorsToAllHalstead(['...']);
         if (node.expression) this.continueWalk(node.expression);
         return false;
     }
     private visitCaseClause(node: ts.CaseClause): boolean {
-        console.log(`${this.indent()}• visitCaseClause [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitCaseClause [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['case']);
         this.continueWalk(node.expression);
         this.addOperatorsToAllHalstead([':']);
@@ -1441,13 +1395,13 @@ export class FileIndexer {
         return false;
     }
     private visitDefaultClause(node: ts.DefaultClause): boolean {
-        console.log(`${this.indent()}• visitDefaultClause [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitDefaultClause [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['default', ':']);
         this.visitBlockStatements(node.statements);
         return false;
     }
     private visitCatchClause(node: ts.CatchClause): boolean {
-        console.log(`${this.indent()}• visitCatchClause [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitCatchClause [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['catch']);
         if (node.variableDeclaration) {
             this.addOperatorsToAllHalstead(['()']);
@@ -1457,182 +1411,182 @@ export class FileIndexer {
         return false;
     }
     private visitSpreadAssignment(node: ts.SpreadAssignment): boolean {
-        console.log(`${this.indent()}• visitSpreadAssignment [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSpreadAssignment [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['...']);
         this.continueWalk(node.expression);
         return false;
     }
     private visitEnumMember(node: ts.EnumMember): boolean {
-        console.log(`${this.indent()}• visitEnumMember [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitEnumMember [${node.pos}:${node.end}]`);
         this.continueWalk(node.name);
         this.addOperatorsToAllHalstead(['=']);
         if (node.initializer) this.continueWalk(node.initializer);
         return false;
     }
     private visitUnparsedPrepend(node: ts.UnparsedPrepend): boolean {
-        console.log(`${this.indent()}• visitUnparsedPrepend [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitUnparsedPrepend [${node.pos}:${node.end}]`);
         console.log('** Parse problem!! **', node);
         return false;
     }
     private visitBundle(node: ts.Bundle): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitBundle [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitBundle [${node.pos}:${node.end}]`);
         return false;
     }
     private visitUnparsedSource(node: ts.UnparsedSource): boolean {
-        console.log(`${this.indent()}• visitUnparsedSource [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitUnparsedSource [${node.pos}:${node.end}]`);
         console.log('** Parse problem!! **', node);
         return false;
     }
     private visitJSDocTypeExpression(node: ts.JSDocTypeExpression): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypeExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypeExpression [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocNameReference(node: ts.JSDocNameReference): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocNameReference [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocNameReference [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocMemberName(node: ts.JSDocMemberName): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocMemberName [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocMemberName [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocLink(node: ts.JSDocLink): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocLink [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocLink [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocLinkCode(node: ts.JSDocLinkCode): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocLinkCode [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocLinkCode [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocLinkPlain(node: ts.JSDocLinkPlain): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocLinkPlain [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocLinkPlain [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocAllType(node: ts.JSDocAllType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocAllType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocAllType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocUnknownType(node: ts.JSDocUnknownType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocUnknownType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocUnknownType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocNullableType(node: ts.JSDocNullableType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocNullableType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocNullableType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocNonNullableType(node: ts.JSDocNonNullableType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocNonNullableType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocNonNullableType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocOptionalType(node: ts.JSDocOptionalType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocOptionalType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocOptionalType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocFunctionType(node: ts.JSDocFunctionType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocFunctionType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocFunctionType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocVariadicType(node: ts.JSDocVariadicType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocVariadicType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocVariadicType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocNamepathType(node: ts.JSDocNamepathType): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocNamepathType [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocNamepathType [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDoc(node: ts.JSDoc): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDoc(node [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDoc(node [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocTypeLiteral(node: ts.JSDocTypeLiteral): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypeLiteral [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypeLiteral [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocSignature(node: ts.JSDocSignature): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocSignature [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocSignature [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocAugmentsTag(node: ts.JSDocAugmentsTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocAugmentsTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocAugmentsTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocAuthorTag(node: ts.JSDocAuthorTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocAuthorTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocAuthorTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocClassTag(node: ts.JSDocClassTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocClassTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocClassTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocCallbackTag(node: ts.JSDocCallbackTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocCallbackTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocCallbackTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocPublicTag(node: ts.JSDocPublicTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocPublicTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocPublicTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocPrivateTag(node: ts.JSDocPrivateTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocPrivateTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocPrivateTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocProtectedTag(node: ts.JSDocProtectedTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocProtectedTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocProtectedTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocReadonlyTag(node: ts.JSDocReadonlyTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocReadonlyTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocReadonlyTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocOverrideTag(node: ts.JSDocOverrideTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocOverrideTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocOverrideTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocDeprecatedTag(node: ts.JSDocDeprecatedTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocDeprecatedTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocDeprecatedTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocSeeTag(node: ts.JSDocSeeTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocSeeTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocSeeTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocEnumTag(node: ts.JSDocEnumTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocEnumTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocEnumTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocParameterTag(node: ts.JSDocParameterTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocParameterTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocParameterTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocReturnTag(node: ts.JSDocReturnTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocReturnTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocReturnTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocThisTag(node: ts.JSDocThisTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocThisTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocThisTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocTypeTag(node: ts.JSDocTypeTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypeTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypeTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocTemplateTag(node: ts.JSDocTemplateTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocTemplateTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocTemplateTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocTypedefTag(node: ts.JSDocTypedefTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypedefTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocTypedefTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocUnknownTag(node: ts.JSDocUnknownTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocUnknownTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocUnknownTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocPropertyTag(node: ts.JSDocPropertyTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocPropertyTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocPropertyTag [${node.pos}:${node.end}]`);
         return false;
     }
     private visitJSDocImplementsTag(node: ts.JSDocImplementsTag): boolean {
-        console.log(`!!!!!!!!!${this.indent()}• visitJSDocImplementsTag [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocImplementsTag [${node.pos}:${node.end}]`);
         return false;
     }
     /////////
@@ -1640,14 +1594,14 @@ export class FileIndexer {
     // Declarations
 
     private visitModuleDeclaration(node: ts.ModuleDeclaration): boolean {
-        console.log(`${this.indent()}• visitModuleDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitModuleDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['module']);
-        console.log(`${this.indent()}• visitModuleDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitModuleDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitImportEqualsDeclaration(node: ts.ImportEqualsDeclaration): boolean {
-        console.log(`${this.indent()}• visitImportEqualsDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitImportEqualsDeclaration [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.addOperatorsToAllHalstead(['import']);
         this.continueWalk(node.name);
@@ -1658,7 +1612,7 @@ export class FileIndexer {
 
     private visitExportDeclaration(node: ts.ExportDeclaration): boolean {
         // TODO - should this live as a "component"
-        console.log(`${this.indent()}• visitExportDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitExportDeclaration [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['export']);
         // this.addOperatorsToAllHalstead(['export', '{}']);
         if (node.exportClause) this.continueWalk(node.exportClause);
@@ -1670,51 +1624,52 @@ export class FileIndexer {
     }
 
     private visitClassDeclaration(node: ts.ClassDeclaration): boolean {
-        console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['class']);
-        console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitInterfaceDeclaration(node: ts.InterfaceDeclaration): boolean {
-        console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['interface']);
-        console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitGetAccessorDeclaration(node: ts.GetAccessorDeclaration): boolean {
-        console.log(`${this.indent()}• visitGetAccessorDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitGetAccessorDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['get']);
-        console.log(`${this.indent()}• visitGetAccessorDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitGetAccessorDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitSetAccesssorDeclaration(node: ts.SetAccessorDeclaration): boolean {
-        console.log(`${this.indent()}• visitSetAccesssorDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitSetAccesssorDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['set']);
-        console.log(`${this.indent()}• visitSetAccesssorDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitSetAccesssorDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitConstructSignatureDeclaration(node: ts.ConstructSignatureDeclaration): boolean {
-        console.log(`${this.indent()}• visitConstructSignatureDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitConstructSignatureDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['new']);
-        console.log(`${this.indent()}• visitConstructSignatureDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev)
+            console.log(`${this.indent()}• visitConstructSignatureDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitCallSignatureDeclaration(node: ts.CallSignatureDeclaration): boolean {
-        console.log(`${this.indent()}• visitCallSignatureDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitCallSignatureDeclaration [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.parameters, '()');
         this.addOperatorsToAllHalstead([':']);
         if (node.type) this.continueWalk(node.type);
-        console.log(`${this.indent()}• visitCallSignatureDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitCallSignatureDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitTypeAliasDeclaration(node: ts.TypeAliasDeclaration): boolean {
-        console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}]`);
 
         let lsifSymbol = this.lsifSymbol(node);
 
@@ -1727,59 +1682,68 @@ export class FileIndexer {
         }
 
         // if (this.underTest) {
-        console.log(
-            `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: COMPONENT PUSHED TO HEIRARCHY -->`
-        );
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT PUSHED TO HEIRARCHY -->`
+            );
         // node.decorators?.forEach((decorator) => {
         //     console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting decorators`);
         //     this.continueWalk(decorator);
         // });
         node.modifiers?.forEach((modifier) => {
-            console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting modifiers`);
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting modifiers`
+                );
             this.continueWalk(modifier);
         });
         this.addOperatorsToAllHalstead(['type']);
         if (node.name) this.continueWalk(node.name);
         if ('typeParameters' in node && node.typeParameters) {
-            console.log(
-                `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting typeParameters`
-            );
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting typeParameters`
+                );
             this.visitNodeArray(node.typeParameters, '<>');
         }
         if ('type' in node && node.type) {
             if (!ts.isTypeAliasDeclaration(node)) this.addOperatorsToAllHalstead([':']);
-            console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting type`);
+            if (this.dev)
+                console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
             node.type.end;
         }
         this.popComponentFromHeirarchy(node);
-        console.log(
-            `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${
-                node.end
-            }] :: COMPONENT POPPED FROM HEIRARCHY <--`
-        );
-        console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT POPPED FROM HEIRARCHY <--`
+            );
+        if (this.dev) console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitMethodSignature(node: ts.MethodSignature): boolean {
-        console.log(`${this.indent()}• visitMethodSignature [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitMethodSignature [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, []);
-        console.log(`${this.indent()}• visitMethodSignature [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitMethodSignature [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitConstructorDeclaration(node: ts.ConstructorDeclaration): boolean {
-        console.log(`${this.indent()}• visitConstructorDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitConstructorDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['constructor']);
-        console.log(`${this.indent()}• visitConstructorDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitConstructorDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitMethodDeclaration(node: ts.MethodDeclaration): boolean {
-        console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, []);
-        console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
@@ -1807,32 +1771,32 @@ export class FileIndexer {
         includeEnclosingOperator: boolean = true,
         includeSeparator: boolean = true
     ): boolean {
-        console.log(`${this.indent()}• visitNodeArray`);
+        if (this.dev) console.log(`${this.indent()}• visitNodeArray`);
         if (includeEnclosingOperator) this.addOperatorsToAllHalstead([enclosingOperator]);
 
         const maxLoop = nodes.length - 1;
         nodes.forEach((node, i) => {
-            console.log(`${this.indent()}• visitNodeArray, maxLoop: ${maxLoop}`, node.kind);
+            if (this.dev) console.log(`${this.indent()}• visitNodeArray, maxLoop: ${maxLoop}`, node.kind);
             if ('token' in node) this.visitKeyword(node.token);
             this.continueWalk(node);
             if (i != maxLoop && includeSeparator) {
-                console.log('• visitNodeArray adding separator', separator);
+                if (this.dev) console.log('• visitNodeArray adding separator', separator);
                 this.addOperatorsToAllHalstead([separator]);
             }
         });
-        console.log(`${this.indent()}• visitNodeArray <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitNodeArray <<EXIT>>`);
         return false;
     }
 
     private visitFunctionDeclaration(node: ts.FunctionDeclaration) {
-        console.log(`${this.indent()}• visitFunctionDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitFunctionDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['function']);
-        console.log(`${this.indent()}• visitFunctionDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitFunctionDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitFunctionExpression(node: ts.FunctionExpression) {
-        console.log(`${this.indent()}• visitFunctionExpression [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitFunctionExpression [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['function']);
         if (node.name) this.continueWalk(node.name);
         this.visitNodeArray(node.parameters, '()');
@@ -1841,12 +1805,12 @@ export class FileIndexer {
             this.continueWalk(node.type);
         }
         this.continueWalk(node.body);
-        console.log(`${this.indent()}• visitFunctionExpression [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitFunctionExpression [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
     private visitPropertyDeclaration(node: ts.PropertyDeclaration) {
-        console.log(`${this.indent()}• visitPropertyDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitPropertyDeclaration [${node.pos}:${node.end}]`);
         let lsifSymbol = this.lsifSymbol(node);
 
         if (this.underTest) {
@@ -1857,18 +1821,25 @@ export class FileIndexer {
             this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
         }
 
-        console.log(
-            `${this.indent()}• visitPropertyDeclaration [${node.pos}:${node.end}] :: COMPONENT PUSHED TO HEIRARCHY -->`
-        );
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitPropertyDeclaration [${node.pos}:${
+                    node.end
+                }] :: COMPONENT PUSHED TO HEIRARCHY -->`
+            );
         node.modifiers?.forEach((modifier) => {
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting modifiers`);
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting modifiers`
+                );
             this.continueWalk(modifier);
         });
         if (node.name) this.continueWalk(node.name);
         if ('questionToken' in node && node.questionToken) this.addOperatorsToAllHalstead(['?']);
         if (node.type) {
             if (!ts.isTypeAliasDeclaration(node)) this.addOperatorsToAllHalstead([':']);
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
+            if (this.dev)
+                console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
             node.type.end;
         }
@@ -1877,7 +1848,7 @@ export class FileIndexer {
             this.continueWalk(node.initializer);
         }
         this.popComponentFromHeirarchy(node);
-        console.log(`${this.indent()}• visitPropertyDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
+        if (this.dev) console.log(`${this.indent()}• visitPropertyDeclaration [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
@@ -1904,12 +1875,13 @@ export class FileIndexer {
             | ts.TypeAliasDeclaration,
         operatorsToPush: string[]
     ) {
-        console.log(
-            `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}]`,
-            node.kind,
-            operatorsToPush,
-            node
-        );
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}]`,
+                node.kind,
+                operatorsToPush,
+                node
+            );
         let lsifSymbol = this.lsifSymbol(node);
 
         if (this.underTest) {
@@ -1921,15 +1893,21 @@ export class FileIndexer {
         }
 
         // if (this.underTest) {
-        console.log(
-            `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: COMPONENT PUSHED TO HEIRARCHY -->`
-        );
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitDeclarationWithBody [${node.pos}:${
+                    node.end
+                }] :: COMPONENT PUSHED TO HEIRARCHY -->`
+            );
         // node.decorators?.forEach((decorator) => {
         //     console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting decorators`);
         //     this.continueWalk(decorator);
         // });
         node.modifiers?.forEach((modifier) => {
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting modifiers`);
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting modifiers`
+                );
             this.continueWalk(modifier);
         });
         this.addOperatorsToAllHalstead(operatorsToPush);
@@ -1937,20 +1915,25 @@ export class FileIndexer {
         if ('asteriskToken' in node && node.asteriskToken) this.addOperatorsToAllHalstead(['*']);
         if ('questionToken' in node && node.questionToken) this.addOperatorsToAllHalstead(['?']);
         if ('heritageClauses' in node && node.heritageClauses) {
-            console.log(
-                `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting heritageClauses`,
-                node.heritageClauses
-            );
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting heritageClauses`,
+                    node.heritageClauses
+                );
             this.visitNodeArray(node.heritageClauses, '', ',', false);
         }
         if ('typeParameters' in node && node.typeParameters) {
-            console.log(
-                `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting typeParameters`
-            );
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting typeParameters`
+                );
             this.visitNodeArray(node.typeParameters, '<>');
         }
         if ('parameters' in node) {
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting parameters`);
+            if (this.dev)
+                console.log(
+                    `${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting parameters`
+                );
             this.visitNodeArray(node.parameters, '()');
         }
         if ('initializer' in node && node.initializer) {
@@ -1959,18 +1942,21 @@ export class FileIndexer {
         }
         if ('type' in node && node.type) {
             if (!ts.isTypeAliasDeclaration(node)) this.addOperatorsToAllHalstead([':']);
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
+            if (this.dev)
+                console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
             node.type.end;
         }
         // if ('type' in node && node.type && 'body' in node && node.body) {
         // }
         if ('body' in node && node.body) {
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting body`);
+            if (this.dev)
+                console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting body`);
             this.continueWalk(node.body);
         }
         if ('members' in node && node.members) {
-            console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting members`);
+            if (this.dev)
+                console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting members`);
             this.visitNodeArray(node.members, '{}', ',', true, !ts.isClassDeclaration(node));
             if (node.members.hasTrailingComma) this.addOperatorsToAllHalstead([',']);
         }
@@ -1980,69 +1966,13 @@ export class FileIndexer {
         //     this.continueWalk(node.type);
         // }
         this.popComponentFromHeirarchy(node);
-        console.log(
-            `${this.indent()}• visitDeclarationWithBody [${node.pos}:${
-                node.end
-            }] :: COMPONENT POPPED FROM HEIRARCHY <--`
-        );
-        console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] <<EXIT>>`);
-        return false;
-        // }
-
-        // this.pushComponentToHeirarchy(id);
-        // // if (walkChildren) {
-        // //     ts.forEachChild(node, (node) => this.continueWalk(node));
-        // // }
-        // this.popComponentFromHeirarchy(node);
-        // return false;
-    }
-
-    private visitDeclaration(
-        node:
-            | ts.ClassDeclaration
-            | ts.EnumDeclaration
-            | ts.FunctionDeclaration
-            | ts.InterfaceDeclaration
-            | ts.TypeParameterDeclaration
-            | ts.PropertyDeclaration
-            | ts.MethodDeclaration
-            | ts.ConstructSignatureDeclaration
-            | ts.GetAccessorDeclaration
-            | ts.SetAccessorDeclaration
-            | ts.ConstructorDeclaration
-            | ts.VariableDeclaration,
-        operatorsToPush: string[],
-        walkChildren: boolean = true
-    ): boolean {
-        console.log(`${this.indent()}• visitDeclaration [${node.pos}:${node.end}]`);
-        let lsifSymbol = this.lsifSymbol(node);
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-            // node.decorators?.forEach((decorator) => {
-            //     this.continueWalk(decorator);
-            // });
-            node.modifiers?.forEach((modifier) => {
-                this.continueWalk(modifier);
-            });
-            this.addOperatorsToAllHalstead(operatorsToPush);
-            if (node.name) this.continueWalk(node.name);
-            // if (walkChildren) {
-            //     ts.forEachChild(node, (node) => {
-            //         console.log(`${this.indent()}• visitDeclaration [${node.pos}:${node.end}] ${node.kind}, node.child`);
-            //         this.continueWalk(node);
-            //     });
-            // }
-            this.popComponentFromHeirarchy(node);
-            return false;
-        }
-
-        let id = this.emitDeclaration(node, lsifSymbol);
-        this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
-        this.pushComponentToHeirarchy(id);
-        if (walkChildren) {
-            ts.forEachChild(node, (node) => this.continueWalk(node));
-        }
-        this.popComponentFromHeirarchy(node);
+        if (this.dev)
+            console.log(
+                `${this.indent()}• visitDeclarationWithBody [${node.pos}:${
+                    node.end
+                }] :: COMPONENT POPPED FROM HEIRARCHY <--`
+            );
+        if (this.dev) console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
 
@@ -2057,9 +1987,10 @@ export class FileIndexer {
             this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operands.push(
                 ...operands
             );
-            console.log(
-                this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operands
-            );
+            if (this.dev)
+                console.log(
+                    this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operands
+                );
         });
     }
 
@@ -2073,27 +2004,12 @@ export class FileIndexer {
             this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operators.push(
                 ...operators
             );
-            console.log(
-                this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operators
-            );
+            if (this.dev)
+                console.log(
+                    this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operators
+                );
         });
     }
-
-    // printLastComponentHalsteadOperands() {
-    //     console.log(
-    //         this.currentComponentHeirarchy[
-    //             this.currentComponentHeirarchyPositions[this.currentComponentHeirarchyPositions.length]
-    //         ].halstead.operators
-    //     );
-    // }
-
-    // printLastComponentHalsteadOperators() {
-    //     console.log(
-    //         this.currentComponentHeirarchy[
-    //             this.currentComponentHeirarchyPositions[this.currentComponentHeirarchyPositions.length]
-    //         ].halstead.operators
-    //     );
-    // }
 
     private getDeclarationKind(declaration: ts.Node): number {
         if (ts.isModuleDeclaration(declaration)) return 2;
@@ -2190,7 +2106,8 @@ export class FileIndexer {
             | ts.VariableDeclaration
             | ts.TypeAliasDeclaration
     ) {
-        const foundReferences = this.languageService.findReferences(this.sourceFile.fileName, node.name!.getStart());
+        if (!node.name) return;
+        const foundReferences = this.languageService.findReferences(this.sourceFile.fileName, node.name.getStart());
         if (!this.references.has(id)) this.references.set(id, new Array<DefinitionRange>());
         if (foundReferences) {
             foundReferences.forEach((foundReference) => {
@@ -2203,33 +2120,6 @@ export class FileIndexer {
                 this.references.get(id)!.push(...referencesRangeArray);
             });
         }
-    }
-
-    private visitDefinition(node: ts.Node): number {
-        console.log(`${this.indent()}• visitDefinition [${node.pos}:${node.end}]`);
-        let id = this.lsifCounter.get();
-
-        console.log(`${this.indent()}• visitDefinition [${node.pos}:${node.end}]`, node.constructor.name);
-
-        if (ts.isImportDeclaration(node)) {
-            console.log(`isImportDeclaration :: ${node.getText()}`);
-            this.addOperatorsToAllHalstead(['import']);
-            return id;
-        }
-        if (ts.isSourceFile(node)) {
-            console.log(`isSourceFile :: ${node.fileName}`);
-            return id;
-        }
-        if (ts.isToken(node)) {
-            console.log(`isToken :: ${node.getText()}`);
-            return id;
-        }
-        if (ts.isIdentifier(node)) {
-            console.log(`isIdentifier :: ${node.getText()}`);
-            return id;
-        }
-        console.log(`isNodeObject :: ${node.kind} -> ${node.getText()}`);
-        return id;
     }
 
     private lsifSymbol(node: ts.Node): LsifSymbol {

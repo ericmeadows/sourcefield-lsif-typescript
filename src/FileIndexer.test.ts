@@ -34,6 +34,7 @@ let options: ProjectOptions = {
     projectDisplayName: '/Users/ericmeadows/git/echarts',
     writeIndex: (partialIndex: any): void => {},
     counter,
+    dev: true,
 };
 
 let compilerOptions: ts.CompilerOptions = {
@@ -4260,6 +4261,7 @@ for (const testItem of testItems.slice()) {
             declarations,
             references,
             languageService,
+            options.dev,
             true
         );
         visitor.index();
@@ -4355,6 +4357,7 @@ if (DEBUG) {
                 declarations,
                 references,
                 languageService,
+                options.dev,
                 true
             );
             visitor.index();
