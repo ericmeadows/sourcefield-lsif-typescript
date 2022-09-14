@@ -52,14 +52,18 @@ export class FileIndexer {
     ) {}
     public index(): void {
         this.visit(this.sourceFile);
-        for (let parentChildRelationshipModuleLevel of this.parentChildRelationshipsModuleLevel) {
-            if (parentChildRelationshipModuleLevel.children.length == 0) continue;
-            this.writeIndex(parentChildRelationshipModuleLevel.getEmittable(this.lsifCounter.next()));
-        }
+        this.emitDocumentSymbolResults();
     }
 
     private indent(): string {
         return '\t'.repeat(this.indentLevel);
+    }
+
+    private emitDocumentSymbolResults() {
+        for (let parentChildRelationshipModuleLevel of this.parentChildRelationshipsModuleLevel) {
+            if (parentChildRelationshipModuleLevel.children.length == 0) continue;
+            this.writeIndex(parentChildRelationshipModuleLevel.getEmittable(this.lsifCounter.next()));
+        }
     }
 
     private pushComponentToHeirarchy(id: number, isSourceFile: boolean = false) {
@@ -96,21 +100,14 @@ export class FileIndexer {
 
     private visit(node: ts.Node): void {
         if (this.dev) console.log(`${this.indent()}• visit [${node.pos}:${node.end}]`);
-        // let prevId = this.lsifCounter.get();
         if (!this.continueWalk(node)) return;
 
-        // let id = this.lsifCounter.get();
-        // if (prevId == id) {
-        //     ts.forEachChild(node, (node) => this.visit(node));
-        //     return;
-        // }
         if (this.dev) console.log('visit...');
 
         ts.forEachChild(node, (node) => {
             if (this.dev) console.log(`${this.indent()}• visit.child [${node.pos}:${node.end}]`);
             this.visit(node);
         });
-        // this.popComponentFromHeirarchy(node);
     }
 
     private continueWalk(node: ts.Node): boolean {
