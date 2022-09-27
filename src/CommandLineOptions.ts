@@ -27,7 +27,7 @@ export interface ProjectOptions extends MultiProjectOptions {
 export function mainCommand(indexAction: (projects: string[], options: MultiProjectOptions) => void): Command {
     const command = new Command();
     command
-        .name('scip-typescript')
+        .name('lsif-typescript')
         .version(packageJson.version)
         .description(
             'LSIF indexer for TypeScript and JavaScript\nFor usage examples, see https://github.com/sourcegraph/scip-typescript/blob/main/README.md'
