@@ -1,13 +1,6 @@
 import * as ts from 'typescript';
 
 export const operatorTokenToStringMap: Map<ts.SyntaxKind, string> = new Map<ts.SyntaxKind, string>([
-    // [ts.SyntaxKind.EndOfFileToken, ''],
-    // [ts.SyntaxKind.OpenBraceToken, ''],
-    // [ts.SyntaxKind.CloseBraceToken, ''],
-    // [ts.SyntaxKind.OpenParenToken, ''],
-    // [ts.SyntaxKind.CloseParenToken, ''],
-    // [ts.SyntaxKind.OpenBracketToken, ''],
-    // [ts.SyntaxKind.CloseBracketToken, ''],
     [ts.SyntaxKind.DotToken, '.'],
     [ts.SyntaxKind.DotDotDotToken, '...'],
     [ts.SyntaxKind.SemicolonToken, ';'],
@@ -63,14 +56,6 @@ export const operatorTokenToStringMap: Map<ts.SyntaxKind, string> = new Map<ts.S
     [ts.SyntaxKind.AmpersandAmpersandEqualsToken, '&&='],
     [ts.SyntaxKind.QuestionQuestionEqualsToken, '??='],
     [ts.SyntaxKind.CaretEqualsToken, '^='],
-    // [ts.SyntaxKind.FirstToken, ''],
-    // [ts.SyntaxKind.LastToken, ''],
-    // [ts.SyntaxKind.FirstTriviaToken, ''],
-    // [ts.SyntaxKind.LastTriviaToken, ''],
-    // [ts.SyntaxKind.FirstLiteralToken, ''],
-    // [ts.SyntaxKind.LastLiteralToken, ''],
-    // [ts.SyntaxKind.FirstTemplateToken, ''],
-    // [ts.SyntaxKind.LastTemplateToken, ''],
 ]);
 
 export const keywordToStringMap: Map<ts.SyntaxKind, string> = new Map<ts.SyntaxKind, string>([

@@ -40,7 +40,7 @@ export function mainCommand(indexAction: (projects: string[], options: MultiProj
         .option('--infer-tsconfig', "whether to infer the tsconfig.json file, if it's missing", false)
         .option('--output <path>', 'path to the output file', 'index.scip')
         .option('--no-progress-bar', 'whether to disable the progress bar')
-        .option('--dev', 'whether to run in dev mode')
+        .option('--dev', 'whether to run in dev mode - shows detailed print outputs')
         .argument('[projects...]')
         .action((parsedProjects, parsedOptions) => {
             indexAction(parsedProjects as string[], parsedOptions as MultiProjectOptions);

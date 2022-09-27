@@ -75,7 +75,6 @@ export class ProjectIndexer {
             stream: this.options.progressBar ? process.stderr : writableNoopStream(),
         });
         let lastWrite = startTimestamp;
-        let filesProcessed = 0;
         for (const [index, sourceFile] of filesToIndex.entries()) {
             const title = path.relative(this.options.cwd, sourceFile.fileName);
             jobs.tick({ title });
@@ -109,16 +108,9 @@ export class ProjectIndexer {
             );
             try {
                 visitor.index();
-                filesProcessed += 1;
             } catch (error) {
                 console.error(`unexpected error indexing project root '${this.options.cwd}'`, error);
             }
-
-            // // TODO - remove this!
-            // if (filesProcessed == 1) {
-            //     console.log('sourceFile', sourceFile.languageVersion);
-            //     break;
-            // }
         }
         this.emitReferences(declarations, references);
         jobs.terminate();
@@ -168,7 +160,7 @@ export class ProjectIndexer {
     }
 
     /**
-     * Emits a referenceResult row to the LSIF output
+     * Emits a textDocument edge row to the LSIF output
      *
      * @param {number}  inV - The corresponding input vertex (row.id)
      * @param {string} textDocumentType - The type of textDocument edge to emit
@@ -187,7 +179,7 @@ export class ProjectIndexer {
     }
 
     /**
-     * Emits a referenceResult row to the LSIF output
+     * Emits a item edge row to the LSIF output
      *
      * @param {number[]}  inVs - The corresponding input vertexes (row.id)
      * @param {number} outV - The corresponding output vertex (row.id)
@@ -216,7 +208,7 @@ export class ProjectIndexer {
     }
 
     /**
-     * Emits a referenceResult row to the LSIF output
+     * Emits reference/definition rows to the LSIF output
      *
      * @param {number} definitionRangeId - The id of the component definition being referenced
      * @param {number[]} referenceRangeIds - The ids of all components referencing the definition
@@ -244,6 +236,7 @@ export class ProjectIndexer {
                 });
                 if (rangeOverlaps.length == 0) continue;
 
+                // Returns the id of the most-nested component to ensure that only the smallest parent is marked as the parent.
                 let [overlapId] = rangeOverlaps.reduce((previous, current) => {
                     let [, previousDefinitionRange] = previous;
                     let [, currentDefinitionRange] = current;

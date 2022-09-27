@@ -30,6 +30,8 @@ export class FileIndexer {
     private propertyCounters: Map<string, Counter> = new Map();
     private localSymbolTable: Map<ts.Node, LsifSymbol> = new Map();
     private parentChildRelationships: ParentChildRelationships[] = Array<ParentChildRelationships>();
+    // Since a file is a module, we don't want to start randomly in the parentChildRelationships array.
+    // We want to aggregate parents from the "file"/module-level.
     private parentChildRelationshipsModuleLevel: ParentChildRelationships[] = Array<ParentChildRelationships>();
     public currentComponentHeirarchy: Complexity[] = new Array<Complexity>();
     private currentComponentHeirarchyPositions: number[] = Array<number>();
@@ -382,9 +384,9 @@ export class FileIndexer {
 
     private visitOperator(kind: ts.SyntaxKind): boolean {
         if (this.dev) console.log(`${this.indent()}• visitOperator`, kind);
-        let keywordString = operatorTokenToStringMap.get(kind);
-        if (keywordString) {
-            this.addOperatorsToAllHalstead([keywordString]);
+        let operatorString = operatorTokenToStringMap.get(kind);
+        if (operatorString) {
+            this.addOperatorsToAllHalstead([operatorString]);
         }
         if (this.dev) console.log(`${this.indent()}• visitOperator <<EXIT>>`);
         return false;
@@ -619,6 +621,7 @@ export class FileIndexer {
         if (this.dev) console.log(`${this.indent()}• visitVariableDeclarationList [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
 
+        // TODO - investigate https://github.com/source-field/sourcefield-lsif-typescript/pull/1#discussion_r977227847
         if (node.flags == ts.NodeFlags.None || node.flags & ts.NodeFlags.None) this.addOperatorsToAllHalstead(['var']);
         if (node.flags == ts.NodeFlags.Let || node.flags & ts.NodeFlags.Let) this.addOperatorsToAllHalstead(['let']);
         if (node.flags == ts.NodeFlags.Const || node.flags & ts.NodeFlags.Const)
@@ -843,7 +846,6 @@ export class FileIndexer {
         return false;
     }
 
-    /////////
     private visitJsxText(node: ts.JsxText): boolean {
         if (this.dev) console.log(`${this.indent()}• visitJsxText [${node.pos}:${node.end}]`);
         let text = node.text.replace(/(\r\n\s*|\n\s*|\r\s*)/gm, '');
@@ -1077,9 +1079,6 @@ export class FileIndexer {
         if (this.dev) console.log(`${this.indent()}• visitTemplateExpression [${node.pos}:${node.end}]`);
         this.continueWalk(node.head);
         this.visitNodeArray(node.templateSpans, '', '', false, false);
-        // for (const templateSpan of node.templateSpans) {
-        //     this.continueWalk(templateSpan);
-        // }
         return false;
     }
     private visitYieldExpression(node: ts.YieldExpression): boolean {
@@ -1584,10 +1583,8 @@ export class FileIndexer {
         if (this.dev) console.log(`!!!!!!!!!${this.indent()}• visitJSDocImplementsTag [${node.pos}:${node.end}]`);
         return false;
     }
-    /////////
 
     // Declarations
-
     private visitModuleDeclaration(node: ts.ModuleDeclaration): boolean {
         if (this.dev) console.log(`${this.indent()}• visitModuleDeclaration [${node.pos}:${node.end}]`);
         this.visitDeclarationWithBody(node, ['module']);
@@ -1609,7 +1606,6 @@ export class FileIndexer {
         // TODO - should this live as a "component"
         if (this.dev) console.log(`${this.indent()}• visitExportDeclaration [${node.pos}:${node.end}]`);
         this.addOperatorsToAllHalstead(['export']);
-        // this.addOperatorsToAllHalstead(['export', '{}']);
         if (node.exportClause) this.continueWalk(node.exportClause);
         if (node.moduleSpecifier) {
             this.addOperatorsToAllHalstead(['from']);
@@ -1628,10 +1624,9 @@ export class FileIndexer {
         } else {
             let id = this.emitDeclaration(node, lsifSymbol);
             this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+            this.getAndStoreReferences(id, node);
         }
 
-        // if (this.underTest) {
         if (this.dev)
             console.log(
                 `${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}] :: COMPONENT PUSHED TO HEIRARCHY -->`
@@ -1691,10 +1686,9 @@ export class FileIndexer {
         } else {
             let id = this.emitDeclaration(node, lsifSymbol);
             this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+            this.getAndStoreReferences(id, node);
         }
 
-        // if (this.underTest) {
         if (this.dev)
             console.log(
                 `${this.indent()}• visitInterfaceDeclaration [${node.pos}:${
@@ -1790,10 +1784,9 @@ export class FileIndexer {
         } else {
             let id = this.emitDeclaration(node, lsifSymbol);
             this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+            this.getAndStoreReferences(id, node);
         }
 
-        // if (this.underTest) {
         if (this.dev)
             console.log(
                 `${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${
@@ -1826,7 +1819,6 @@ export class FileIndexer {
             if (this.dev)
                 console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
-            node.type.end;
         }
         this.popComponentFromHeirarchy(node);
         if (this.dev)
@@ -1865,7 +1857,7 @@ export class FileIndexer {
         } else {
             let id = this.emitDeclaration(node, lsifSymbol);
             this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+            this.getAndStoreReferences(id, node);
         }
 
         if (this.dev)
@@ -1898,7 +1890,6 @@ export class FileIndexer {
             if (this.dev)
                 console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
-            node.type.end;
         }
         if ('typeParameters' in node && node.typeParameters) {
             if (this.dev)
@@ -1996,7 +1987,7 @@ export class FileIndexer {
         } else {
             let id = this.emitDeclaration(node, lsifSymbol);
             this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+            this.getAndStoreReferences(id, node);
         }
 
         if (this.dev)
@@ -2019,7 +2010,6 @@ export class FileIndexer {
             if (this.dev)
                 console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
-            node.type.end;
         }
         if (node.initializer) {
             this.addOperatorsToAllHalstead(['=']);
@@ -2067,10 +2057,9 @@ export class FileIndexer {
         } else {
             let id = this.emitDeclaration(node, lsifSymbol);
             this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node); // TODO - uncomment <-----------------------------------------<<<<<<<<<<<<<<<
+            this.getAndStoreReferences(id, node);
         }
 
-        // if (this.underTest) {
         if (this.dev)
             console.log(
                 `${this.indent()}• visitDeclarationWithBody [${node.pos}:${
@@ -2123,10 +2112,7 @@ export class FileIndexer {
             if (this.dev)
                 console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
             this.continueWalk(node.type);
-            node.type.end;
         }
-        // if ('type' in node && node.type && 'body' in node && node.body) {
-        // }
         if ('body' in node && node.body) {
             if (this.dev)
                 console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting body`);
@@ -2138,11 +2124,6 @@ export class FileIndexer {
             this.visitNodeArray(node.members, '{}', ',', true, true);
             if (node.members.hasTrailingComma) this.addOperatorsToAllHalstead([',']);
         }
-        // if ('type' in node && node.type) {
-        //     if (!ts.isTypeAliasDeclaration(node)) this.addOperatorsToAllHalstead([':']);
-        //     console.log(`${this.indent()}• visitDeclarationWithBody [${node.pos}:${node.end}] :: visiting type`);
-        //     this.continueWalk(node.type);
-        // }
         this.popComponentFromHeirarchy(node);
         if (this.dev)
             console.log(
@@ -2160,7 +2141,6 @@ export class FileIndexer {
      * @param {(string | number | bigint)[]} operands - Operands to add to measurement array
      */
     addOperandsToAllHalstead(operands: (string | number | bigint)[]) {
-        // log.debug('this.currentComponentHeirarchyPositions', this.currentComponentHeirarchyPositions);
         this.currentComponentHeirarchyPositions.forEach((position) => {
             this.currentComponentHeirarchy[this.currentComponentHeirarchy.length + position].halstead.operands.push(
                 ...operands
@@ -2380,11 +2360,7 @@ export class FileIndexer {
                 return this.cached(node, LsifSymbol.global(owner, desc));
             }
         } catch (error) {
-            // console.log(error);
-            // TODO - RESTORE THIS ***************************************************************************
-            // TODO - RESTORE THIS ***************************************************************************
-            // TODO - RESTORE THIS ***************************************************************************
-            // TODO - RESTORE THIS ***************************************************************************
+            console.log(error);
         }
 
         // Fallback case: generate a local symbol. It's not a bug when this case

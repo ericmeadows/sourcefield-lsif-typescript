@@ -23,7 +23,6 @@ export function main(): void {
 }
 
 export function indexCommand(projects: string[], options: MultiProjectOptions): void {
-    // console.log('indexCommand - WE HEEREEEE')
     if (options.yarnWorkspaces) {
         projects.push(...listYarnWorkspaces(options.cwd));
     } else if (options.yarnBerryWorkspaces) {
@@ -43,24 +42,10 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         if (index.documents) {
             documentCount += index.documents.length;
         }
-        // fs.writeSync(output, index.serializeBinary())
         fs.writeSync(output, JSON.stringify(index.toObject()) + '\n');
         // SourceField --> change to output json
     };
     try {
-        // writeIndex(
-        //     new lsiftyped.Index({
-        //         metadata: new lsiftyped.Metadata({
-        //             project_root: url.pathToFileURL(options.cwd).toString(),
-        //             text_document_encoding: lsiftyped.TextEncoding.UTF8,
-        //             tool_info: new lsiftyped.ToolInfo({
-        //                 name: 'lsif-typescript',
-        //                 version: packageJson.version,
-        //                 arguments: [],
-        //             }),
-        //         }),
-        //     })
-        // );
         writeIndex(
             new Metadata({
                 id: counter.next(),
@@ -88,16 +73,7 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         }
     } finally {
         fs.close(output);
-        // if (documentCount > 0) {
         console.log(`done ${options.output}`);
-        // } else {
-        //   process.exitCode = 1
-        //   fs.rmSync(options.output)
-        //   const prettyProjects = JSON.stringify(projects)
-        //   console.log(
-        //     `error: no files got indexed. To fix this problem, make sure that the TypeScript projects ${prettyProjects} contain input files or reference other projects.`
-        //   )
-        // }
     }
 }
 

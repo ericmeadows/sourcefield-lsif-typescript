@@ -1069,7 +1069,7 @@ function A(): (public B) => C {
                 ':',
                 '()',
                 'public',
-                '=>', // <------------------- This token is not coming through - will need deeper investigation
+                '=>', // TODO: This token is not coming through - will need deeper
                 '{}',
             ],
             [
@@ -1078,7 +1078,7 @@ function A(): (public B) => C {
                 ':',
                 '()',
                 'public',
-                '=>', // <------------------- This token is not coming through - will need deeper investigation
+                '=>', // TODO: This token is not coming through - will need deeper
                 '{}',
             ],
         ],
@@ -1568,7 +1568,7 @@ new cls3(); // should work
                 ',',
                 '.',
                 '()',
-                // '()', // This shows up, but is erroneous - skipping this test
+                // '()', // TODO: This shows up, but is erroneous - skipping this test
                 '=>',
                 'new',
                 '()',
@@ -1577,7 +1577,7 @@ new cls3(); // should work
                 ',',
                 '.',
                 '()',
-                // '()', // This shows up, but is erroneous - skipping this test
+                // '()', // TODO: This shows up, but is erroneous - skipping this test
                 '=>',
                 'new',
                 '()',
@@ -4184,6 +4184,7 @@ export class InputComponent<T> {
             ['@', '()', 'public', ':', '|', '='],
         ],
     },
+    // // PLACEHOLDER - useful when pulling in a new file to find what's present
     // {
     //     name: 'File Search',
     //     skip: false,
