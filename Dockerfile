@@ -8,13 +8,6 @@ RUN yarn global add npm yarn
 
 COPY . .
 
-RUN yarn
-RUN yarn link
-RUN lsif-typescript --help
-
-# RUN yarn pack
-# RUN yarn global add ./sourcegraph-lsif-typescript-v0.2.9.tgz
-
-# RUN yarn global add @sourcegraph/scip-typescript@${TAG} @sourcegraph/src
+RUN yarn && yarn link
 
 CMD ["/bin/sh"]
