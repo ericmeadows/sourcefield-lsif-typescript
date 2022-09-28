@@ -1,16 +1,17 @@
 #makePublic
-FROM node:18-alpine3.15
+FROM node:18-buster
 
 ARG TAG
 
-RUN apk add --no-cache git curl
-
-RUN yarn global add npm yarn
+RUN apt-get update && \
+    apt-get install -yq git curl
 
 COPY . .
 
-RUN yarn && \
-    yarn build && \
-    yarn link
+RUN yarn
+RUN yarn build
+
+RUN npm link
+RUN lsif-typescript --help
 
 CMD ["/bin/sh"]
