@@ -14,5 +14,5 @@
     "sourceMap": true
   },
   "include": ["./src/**/*"],
-  "exclude": ["lsif.ts", "snapshots"]
+  "exclude": ["lsif.ts", "snapshots", "./src/snapshotss"]
 }
