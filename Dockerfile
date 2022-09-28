@@ -9,6 +9,8 @@ RUN yarn global add npm yarn
 
 COPY . .
 
-RUN yarn && yarn link
+RUN yarn && \
+    yarn build && \
+    yarn link
 
 CMD ["/bin/sh"]

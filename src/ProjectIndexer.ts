@@ -15,15 +15,6 @@ import { Packages } from './Packages';
 import { DefinitionsReferencesItem, Document, ReferenceResult, ResultSet, TextDocumentEdge } from './lsif-data/lsif';
 import { DefinitionRange } from './DefinitionRange';
 
-export class DeclarationReferences {
-    id: number;
-    referencedDeclarationStrings: string[] = new Array<string>();
-    referenceIds: number[] = new Array<number>();
-    constructor(id: number) {
-        this.id = id;
-    }
-}
-
 export class ProjectIndexer {
     private options: ProjectOptions;
     private program: ts.Program;
