@@ -1,13 +1,14 @@
-# scip-typescript
+# lsif-typescript
 
-[SCIP](https://github.com/sourcegraph/scip) indexer for TypeScript and JavaScript.
+[LSIF](https://github.com/sourcegraph/scip) indexer for TypeScript and JavaScript.
 
 ## Quick start
 
 ### Installation
 
 ```sh
-npm install -g @sourcegraph/scip-typescript
+yarn build
+yarn link
 ```
 
 Currently, Node v14, Node v16 and Node v18 are supported. <!-- Source of truth: .github/workflows/ci.yml -->
@@ -17,8 +18,9 @@ Currently, Node v14, Node v16 and Node v18 are supported. <!-- Source of truth: 
 Navigate to the project root, containing `tsconfig.json`.
 
 ```sh
-npm install # or yarn install
-scip-typescript index
+yarn build
+yarn link
+lsif-typescript index
 ```
 
 ### Indexing a JavaScript project
@@ -26,8 +28,9 @@ scip-typescript index
 Navigate to the project root, containing `package.json`.
 
 ```sh
-npm install # or yarn install
-scip-typescript index --infer-tsconfig
+yarn build
+yarn link
+lsif-typescript index --infer-tsconfig
 ```
 
 To improve the quality of indexing results for JavaScript,
@@ -38,43 +41,34 @@ consider adding `@types/*` packages as `devDependencies` in `package.json`.
 Navigate to the project root, containing `package.json`.
 
 ```sh
-yarn install
+yarn build
+yarn link
 
-scip-typescript index --yarn-workspaces # For Yarn v2
-scip-typescript index --yarn-berry-workspaces # For Yarn v3 (Berry)
+lsif-typescript index --yarn-workspaces # For Yarn v2
+lsif-typescript index --yarn-berry-workspaces # For Yarn v3 (Berry)
 ```
 
-### Indexing in CI
+### Running (against Typescript) using the Docker image
 
-Add the following run steps to your CI pipeline:
+When using the Docker image
 
 ```sh
-npm install -g @sourcegraph/scip-typescript @sourcegraph/src
-npm install # or yarn install
-scip-typescript index
-# Upload index with any necessary tokens (shown here using GitHub workflow syntax)
-src lsif upload -github-token='${{ secrets.GITHUB_TOKEN }}' -no-progress
+GITHUB_REPO_PATH=""
+REPO_MOUNT_DIR="/src"
+LSIF_OUTPUT_DIRECTORY="test-sourcefield"
+LSIF_DIR_IN_DOCKER="/test"
+LSIF_FILE="index.lsif"
+LATEST_BUILT_IMAGE="us-docker.pkg.dev/plumbr/source-field/sourcefield-lsif-typescript:62b533a"
+
+# Get latest-built image from:
+# https://console.cloud.google.com/artifacts/docker/plumbr/us/source-field/sourcefield-lsif-typescript?project=plumbr
+
+docker \
+  run \
+  -v ${LSIF_OUTPUT_DIRECTORY}:${LSIF_DIR_IN_DOCKER} \
+  -v ${GITHUB_REPO_PATH}:${REPO_MOUNT_DIR} \
+  -w ${REPO_MOUNT_DIR} \
+  -it \
+  ${LATEST_BUILT_IMAGE} \
+  lsif-typescript index --output ${LSIF_DIR_IN_DOCKER}/${LSIF_FILE}
 ```
-
-For more examples, see the
-[Sourcegraph docs](https://docs.sourcegraph.com/code_intelligence/how-to/index_a_typescript_and_javascript_repository).
-
-## Migrating from lsif-node
-
-Before creating scip-typescript, we used another TypeScript indexer called
-[lsif-node](https://github.com/sourcegraph/lsif-node). We recommend migrating
-to scip-typescript if you are using lsif-node.
-
-Follow the steps below to migrate from lsif-node to scip-typescript:
-
-- Replace usages of the `lsif-tsc -p ARGUMENTS` command with `scip-typescript index ARGUMENTS`.
-- Upgrade to the latest version of the `src` command-line interface, which you
-  can install via `yarn global add @sourcegraph/src`. It’s okay if the version
-  of your `src` command-line interface does not match the version of your
-  Sourcegraph instance.
-
-## Contributing
-
-See [Development.md](./Development.md) for docs on how to work on this project.
-
-Contributors should follow the [Sourcegraph Community Code of Conduct](https://handbook.sourcegraph.com/company-info-and-process/community/code_of_conduct/).

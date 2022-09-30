@@ -4,3 +4,4 @@ node_modules
 yarn-error.log
 snapshots/output/**/*.lsif-typed
 *.tgz
+.DS_STORE

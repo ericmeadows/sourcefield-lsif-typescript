@@ -1,12 +1,17 @@
-# Keep in sync with Dockerfile.autoindex
-FROM node:18-alpine3.15@sha256:0677e437543d10f6cb050d92c792a14e5eb84340e3d5b4c25a88baa723d8a4ae
+#makePublic
+FROM node:18-buster
 
 ARG TAG
 
-RUN apk add --no-cache git curl
+RUN apt-get update && \
+    apt-get install -yq git curl
 
-RUN yarn global add npm yarn
+COPY . .
 
-RUN yarn global add @sourcegraph/scip-typescript@${TAG} @sourcegraph/src
+RUN yarn
+RUN yarn build
+
+RUN npm link
+RUN lsif-typescript index --help
 
 CMD ["/bin/sh"]

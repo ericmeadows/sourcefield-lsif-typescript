@@ -1,16 +1,18 @@
 {
   "extends": "@sourcegraph/tsconfig",
   "compilerOptions": {
-    "target": "es2019",
+    "target": "es6",
     "module": "commonjs",
     "allowJs": false,
     "moduleResolution": "node",
-    "lib": ["esnext"],
+    "lib": ["es6", "dom"],
     "rootDir": ".",
     "allowSyntheticDefaultImports": true,
     "outDir": "dist",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noUnusedLocals": false,
+    "sourceMap": true
   },
   "include": ["./src/**/*"],
-  "exclude": ["lsif.ts", "snapshots"]
+  "exclude": ["lsif.ts", "snapshots", "./src/snapshots"]
 }
