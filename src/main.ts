@@ -15,9 +15,35 @@ import { ProjectIndexer } from './ProjectIndexer';
 import { Counter } from './Counter';
 import { Metadata, Project, ToolInfo } from './lsif-data/lsif';
 
+import * as Sentry from '@sentry/browser';
+import { BrowserTracing } from '@sentry/tracing';
+
 export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
 export function main(): void {
+    Sentry.init({
+        dsn: 'https://5d2514fa0b3d44e1bdeaed1c4e32428c@sentry.sourcefield.io/4',
+        integrations: [new BrowserTracing()],
+
+        // Set tracesSampleRate to 1.0 to capture 100%
+        // of transactions for performance monitoring.
+        // We recommend adjusting this value in production
+        tracesSampleRate: 1.0,
+    });
+
+    const transaction = Sentry.startTransaction({
+        op: 'test',
+        name: 'My First Test Transaction',
+    });
+
+    try {
+        throw new Error('test');
+    } catch (e) {
+        Sentry.captureException(e);
+    } finally {
+        transaction.finish();
+    }
+
     mainCommand((projects, options) => indexCommand(projects, options)).parse(process.argv);
     return;
 }
