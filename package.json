@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/sourcegraph/scip-typescript#readme",
   "dependencies": {
-    "@sentry/browser": "^7.14.0",
+    "@sentry/node": "^7.14.0",
     "@sentry/tracing": "^7.14.0",
     "commander": "^9.2.0",
     "google-protobuf": "^3.20.0",

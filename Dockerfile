@@ -12,6 +12,6 @@ RUN yarn
 RUN yarn build
 
 RUN npm link
-RUN lsif-typescript --help
+RUN lsif-typescript index --help
 
 CMD ["/bin/sh"]
