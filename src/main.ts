@@ -16,7 +16,6 @@ import { Counter } from './Counter';
 import { Metadata, Project, ToolInfo } from './lsif-data/lsif';
 
 import * as Sentry from '@sentry/node';
-import { BrowserTracing } from '@sentry/tracing';
 
 export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
