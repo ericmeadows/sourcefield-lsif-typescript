@@ -24,13 +24,3 @@ export default function emitMetricsToPosthog(
         });
     }
 }
-
-// print("=" * 20)
-// print("The following metrics would be emitted to Posthog")
-// print("-" * 20)
-// print(
-//     f"LICENSE_KEY: {LICENSE_KEY}; (required to be populated to emit)"
-// )
-// print("event_data", event_data)
-// print("=" * 20)
-// return
