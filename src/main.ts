@@ -31,6 +31,10 @@ export function main(): void {
         // We recommend adjusting this value in production
         tracesSampleRate: 1.0,
     });
+    const licenseKey = getLicenseKey();
+    if (licenseKey) {
+        Sentry.setTag('license_key', licenseKey);
+    }
 
     mainCommand((projects, options) => indexCommand(projects, options)).parse(process.argv);
     return;
