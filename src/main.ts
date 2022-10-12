@@ -6,8 +6,6 @@ import * as url from 'url';
 
 import * as ts from 'typescript';
 
-import packageJson from '../package.json';
-
 import { mainCommand, MultiProjectOptions, ProjectOptions } from './CommandLineOptions';
 import { inferTsconfig } from './inferTsconfig';
 import * as lsif from './lsif';
@@ -15,7 +13,11 @@ import { ProjectIndexer } from './ProjectIndexer';
 import { Counter } from './Counter';
 import { Metadata, Project, ToolInfo } from './lsif-data/lsif';
 
+import { PostHog } from 'posthog-node';
+import { getGitCommit, getGitOrgAndRepo, getLicenseKey } from './environment';
+
 import * as Sentry from '@sentry/node';
+import { LANGUAGE, LSIF_VERSION, VERSION } from './version';
 
 export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
@@ -34,6 +36,16 @@ export function main(): void {
 }
 
 export function indexCommand(projects: string[], options: MultiProjectOptions): void {
+    const client: PostHog = new PostHog('phc_KXXmufnHuoy4uzHzIdFbYR7BRJt9PJYFMmb3YlopkZR', {
+        host: 'https://posthog.sourcefield.io',
+    });
+    const licenseKey = getLicenseKey();
+    if (licenseKey) {
+        client.identify({ distinctId: licenseKey });
+    }
+
+    const start = new Date().getTime();
+
     if (options.yarnWorkspaces) {
         projects.push(...listYarnWorkspaces(options.cwd));
     } else if (options.yarnBerryWorkspaces) {
@@ -56,19 +68,23 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         fs.writeSync(output, JSON.stringify(index.toObject()) + '\n');
         // SourceField --> change to output json
     };
+    let success = false;
+    let gitOrg = '';
+    let gitRepo = '';
+    let gitCommit = '';
     try {
         writeIndex(
             new Metadata({
                 id: counter.next(),
                 type: 'vertex',
                 label: 'metaData',
-                version: '0.6.0-sourcefield',
+                version: LSIF_VERSION,
                 projectRoot: url.pathToFileURL(options.cwd).toString(),
                 positionEncoding: 'utf-8',
-                toolInfo: new ToolInfo({ name: 'lsif-typescript', version: packageJson.version }),
+                toolInfo: new ToolInfo({ name: `lsif-${LANGUAGE}`, version: VERSION }),
             })
         );
-        writeIndex(new Project({ id: counter.next(), type: 'vertex', label: 'project', kind: 'Js/TS' }));
+        writeIndex(new Project({ id: counter.next(), type: 'vertex', label: 'project', kind: LANGUAGE }));
         // NOTE: we may want index these projects in parallel in the future.
         // We need to be careful about which order we index the projects because
         // they can have dependencies.
@@ -82,9 +98,31 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
                 counter,
             });
         }
+        success = true;
+        const gitOrgAndRepo = getGitOrgAndRepo(options.cwd);
+        if (gitOrgAndRepo.length == 2) {
+            gitOrg = gitOrgAndRepo[0];
+            gitRepo = gitOrgAndRepo[1];
+        }
+        gitCommit = getGitCommit(options.cwd);
     } finally {
         fs.close(output);
+        let elapsed = new Date().getTime() - start;
         console.log(`done ${options.output}`);
+
+        const properties = {
+            version: VERSION,
+            language: LANGUAGE,
+            gitOrg: gitOrg,
+            gitRepo: gitRepo,
+            timeElapsed: elapsed,
+        };
+        client.capture({
+            distinctId: gitCommit,
+            event: success ? 'parse-succeeded' : 'parse-failed',
+            properties,
+        });
+        client.shutdown();
     }
 }
 

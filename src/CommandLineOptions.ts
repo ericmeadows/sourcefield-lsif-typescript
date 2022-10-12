@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { PostHog } from 'posthog-node';
 
 import packageJson from '../package.json';
 import { Counter } from './Counter';
