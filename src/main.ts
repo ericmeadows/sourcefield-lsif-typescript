@@ -18,6 +18,7 @@ import { getGitCommit, getGitOrgAndRepo, getLicenseKey } from './environment';
 
 import * as Sentry from '@sentry/node';
 import { LANGUAGE, LSIF_VERSION, VERSION } from './version';
+import emitMetricsToPosthog from './posthog';
 
 export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
@@ -117,11 +118,7 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
             gitRepo: gitRepo,
             timeElapsed: elapsed,
         };
-        client.capture({
-            distinctId: gitCommit,
-            event: success ? 'parse-succeeded' : 'parse-failed',
-            properties,
-        });
+        emitMetricsToPosthog(licenseKey, gitCommit, success ? 'parse-succeeded' : 'parse-failed', properties, client);
         client.shutdown();
     }
 }
