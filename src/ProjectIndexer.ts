@@ -81,7 +81,7 @@ export class ProjectIndexer {
                 relative_path: title,
                 occurrences: [],
             });
-            this.emitDocument(title, sourceFile);
+            this.emitDocument(`${this.options.cwd}/${title}`, sourceFile);
             const input = new Input(sourceFile.fileName, sourceFile.getText());
             const visitor = new FileIndexer(
                 this.checker,
