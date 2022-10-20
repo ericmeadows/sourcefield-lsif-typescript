@@ -14,7 +14,7 @@ import { Counter } from './Counter';
 import { Metadata, Project, ToolInfo } from './lsif-data/lsif';
 
 import { PostHog } from 'posthog-node';
-import { getGitCommit, getGitOrgAndRepo, getLicenseKey } from './environment';
+import { getGitCommit, getGitOrgAndRepo, getGitUsername, getLicenseKey } from './environment';
 
 import * as Sentry from '@sentry/node';
 import { LANGUAGE, LSIF_VERSION, VERSION } from './version';
@@ -40,9 +40,10 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
     const client: PostHog = new PostHog('phc_KXXmufnHuoy4uzHzIdFbYR7BRJt9PJYFMmb3YlopkZR', {
         host: 'https://posthog.sourcefield.io',
     });
+    const actor = getGitUsername();
     const licenseKey = getLicenseKey();
-    if (licenseKey) {
-        client.identify({ distinctId: licenseKey });
+    if (actor) {
+        client.identify({ distinctId: actor });
     }
 
     const start = new Date().getTime();

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { PostHog } from 'posthog-node';
+import { getLicenseKey } from './environment';
 
 export default function emitMetricsToPosthog(
     licenseKey: string | undefined,
@@ -21,6 +22,7 @@ export default function emitMetricsToPosthog(
             distinctId: commit,
             event: event,
             properties,
+            groups: { licenseKey: licenseKey },
         });
     }
 }

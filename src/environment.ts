@@ -6,6 +6,11 @@ export function getLicenseKey(): string | undefined {
     return;
 }
 
+export function getGitUsername(): string | undefined {
+    if (process.env.GITHUB_ACTOR) return process.env.GITHUB_ACTOR;
+    return;
+}
+
 export function getGitCommit(cwd: string): string {
     if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
     return child_process.execSync('git rev-parse HEAD', { cwd }).toString();
