@@ -122,6 +122,7 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
             gitOrg: gitOrg,
             gitRepo: gitRepo,
             timeElapsed: elapsed,
+            licenseKey: licenseKey,
         };
         emitMetricsToPosthog(licenseKey, gitCommit, success ? 'parse-succeeded' : 'parse-failed', properties, client);
         client.shutdown();
