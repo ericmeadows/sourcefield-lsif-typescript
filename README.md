@@ -48,6 +48,20 @@ lsif-typescript index --yarn-workspaces # For Yarn v2
 lsif-typescript index --yarn-berry-workspaces # For Yarn v3 (Berry)
 ```
 
+### Running Against a Specific tsconfig.json File
+
+```sh
+lsif-typescript index \
+  --explicit-ts-config-json="tsconfig.production.json"
+```
+
+### Running in the All-Inclusive (Explicit & Implicit tsconfig.\*.json files) Mode
+
+```sh
+lsif-typescript index \
+  --explicit-implicit-loop
+```
+
 ### Running (against Typescript) using the Docker image
 
 When using the Docker image
@@ -70,5 +84,5 @@ docker \
   -w ${REPO_MOUNT_DIR} \
   -it \
   ${LATEST_BUILT_IMAGE} \
-  lsif-typescript index --output ${LSIF_DIR_IN_DOCKER}/${LSIF_FILE}
+  lsif-typescript index --output ${LSIF_DIR_IN_DOCKER}/${LSIF_FILE} --explicit-implicit-loop
 ```
