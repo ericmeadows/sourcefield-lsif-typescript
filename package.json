@@ -1,6 +1,6 @@
 {
   "name": "@sourcegraph/lsif-typescript",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "LSIF indexer for TypeScript and JavaScript",
   "publisher": "sourcefield",
   "bin": "dist/src/main.js",
