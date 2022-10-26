@@ -1,5 +1,7 @@
 import * as child_process from 'child_process';
 import * as Sentry from '@sentry/node';
+import { glob } from 'glob';
+import * as path from 'path';
 
 export function getLicenseKey(): string | undefined {
     if (process.env.SOURCEFIELD_LICENSE_KEY) return process.env.SOURCEFIELD_LICENSE_KEY;
@@ -54,4 +56,28 @@ export function getGitOrgAndRepo(cwd: string): string[] {
         return getGitOrgAndRepoFromHttps(gitExtensionRemoved);
     }
     return [];
+}
+
+export function installPackages(cwd: string) {
+    console.log('installPackages');
+    let globbedFiles = glob.sync('**/pnpm-lock.yaml', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) console.log('PNPM files found; installing');
+    globbedFiles.forEach((globbedFile) => {
+        child_process.execSync('yes | pnpm install', { cwd: path.dirname(globbedFile) }).toString();
+    });
+    globbedFiles = glob.sync('**/yarn-lock.yaml', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) console.log('Yarn files found; installing');
+    globbedFiles.forEach((globbedFile) => {
+        child_process.execSync('yes | yarn install', { cwd: path.dirname(globbedFile) }).toString();
+    });
+    globbedFiles = glob.sync('**/package-lock.yaml', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) console.log('NPM files found; installing');
+    globbedFiles.forEach((globbedFile) => {
+        child_process.execSync('yes | npm install', { cwd: path.dirname(globbedFile) }).toString();
+    });
+    globbedFiles = glob.sync('**/npm-shrinkwrap.json', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) console.log('NPM files found; installing');
+    globbedFiles.forEach((globbedFile) => {
+        child_process.execSync('yes | npm install', { cwd: path.dirname(globbedFile) }).toString();
+    });
 }
