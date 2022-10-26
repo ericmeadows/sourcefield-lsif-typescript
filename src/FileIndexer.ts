@@ -1,5 +1,6 @@
 import { Console } from 'console';
 import * as ts from 'typescript';
+import * as Sentry from '@sentry/node';
 import { is } from 'uvu/assert';
 import { Complexity } from './Complexity';
 
@@ -2265,18 +2266,25 @@ export class FileIndexer {
             | ts.TypeAliasDeclaration
     ) {
         if (!node.name) return;
-        const foundReferences = this.languageService.findReferences(this.sourceFile.fileName, node.name.getStart());
-        if (!this.references.has(id)) this.references.set(id, new Array<DefinitionRange>());
-        if (foundReferences) {
-            foundReferences.forEach((foundReference) => {
-                let referencesRangeArray = foundReference.references.map((reference) => {
-                    return new DefinitionRange(
-                        reference.fileName,
-                        Range.fromTextSpan(this.sourceFile, reference.textSpan)
-                    );
+        try {
+            const foundReferences = this.languageService.findReferences(this.sourceFile.fileName, node.name.getStart());
+            if (!this.references.has(id)) this.references.set(id, new Array<DefinitionRange>());
+            if (foundReferences) {
+                foundReferences.forEach((foundReference) => {
+                    let referencesRangeArray = foundReference.references.map((reference) => {
+                        return new DefinitionRange(
+                            reference.fileName,
+                            Range.fromTextSpan(this.sourceFile, reference.textSpan)
+                        );
+                    });
+                    this.references.get(id)!.push(...referencesRangeArray);
                 });
-                this.references.get(id)!.push(...referencesRangeArray);
-            });
+            }
+        } catch (error) {
+            if (!error.message.includes('Could not find source file')) {
+                Sentry.captureException(error);
+                console.error(error);
+            }
         }
     }
 
