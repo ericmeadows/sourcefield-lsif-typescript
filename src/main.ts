@@ -97,7 +97,7 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         // they can have dependencies.
 
         glob(
-            '**/tsconfig.json',
+            '**/tsconfig.*.json',
             { ignore: ['**/node_modules/**'], cwd: options.cwd },
             (err: Error | null, matches: string[]) => {
                 console.log('matches', matches);
