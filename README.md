@@ -57,6 +57,8 @@ lsif-typescript index \
 
 ### Running in the All-Inclusive (Explicit & Implicit tsconfig.\*.json files) Mode
 
+This method looks for all of the files that match the glob pattern, `**/tsconfig*.json`, except in `node_modules` directories, and then passes them as explicit `tsconfig.json` files. Note that the following arguments are ignored during this scenario: `--explicit-ts-config-json` and `infer-tsconfig`.
+
 ```sh
 lsif-typescript index \
   --explicit-implicit-loop
