@@ -128,7 +128,9 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
                 });
 
                 options.inferTsconfig = true;
+                options.indexedProjects.clear();
                 const tsconfigFile = 'IMPLICIT';
+                console.log(`Processing ${tsconfigFile}`);
                 const projectDisplayName = `${projectDisplayNameWithoutTsConfig}.${tsconfigFile}`;
                 try {
                     indexSingleProject({
