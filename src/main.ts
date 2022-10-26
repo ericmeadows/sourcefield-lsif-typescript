@@ -96,6 +96,14 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         // We need to be careful about which order we index the projects because
         // they can have dependencies.
 
+        glob(
+            '**/tsconfig.json',
+            { ignore: ['**/node_modules/**'], cwd: options.cwd },
+            (err: Error | null, matches: string[]) => {
+                console.log('matches', matches);
+            }
+        );
+
         // loop here - find all tsconfig.*.json if we should do explicity-implicit loops
         if (options.explicitImplicitLoop) {
             let nonWorkingTsConfigFiles: string[] = [];
