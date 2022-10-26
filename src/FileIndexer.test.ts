@@ -30,6 +30,8 @@ let options: ProjectOptions = {
     projectDisplayName: '/Users/ericmeadows/git/echarts',
     writeIndex: (partialIndex: any): void => {},
     counter,
+    explicitTsConfigJson: 'tsconfig.json',
+    explicitImplicitLoop: false,
     dev: true,
 };
 

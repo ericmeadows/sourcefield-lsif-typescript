@@ -19,6 +19,7 @@ import { getGitCommit, getGitOrgAndRepo, getGitUsername, getLicenseKey } from '.
 import * as Sentry from '@sentry/node';
 import { LANGUAGE, LSIF_VERSION, VERSION } from './version';
 import emitMetricsToPosthog from './posthog';
+import { glob } from 'glob';
 
 export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
@@ -94,15 +95,73 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         // NOTE: we may want index these projects in parallel in the future.
         // We need to be careful about which order we index the projects because
         // they can have dependencies.
-        for (const projectRoot of projects) {
-            const projectDisplayName = projectRoot === '.' ? options.cwd : projectRoot;
-            indexSingleProject({
-                ...options,
-                projectRoot,
-                projectDisplayName,
-                writeIndex,
-                counter,
-            });
+
+        // loop here - find all tsconfig.*.json if we should do explicity-implicit loops
+        if (options.explicitImplicitLoop) {
+            let nonWorkingTsConfigFiles: string[] = [];
+            //
+            const globbedFiles = glob.sync('**/tsconfig*.json', { ignore: ['**/node_modules/**'], cwd: options.cwd });
+            console.log('tsconfig*.json files', globbedFiles);
+
+            for (const projectRoot of projects) {
+                const projectDisplayNameWithoutTsConfig = projectRoot === '.' ? options.cwd : projectRoot;
+
+                options.inferTsconfig = false;
+                globbedFiles.forEach((tsconfigFile) => {
+                    options.indexedProjects.clear();
+                    console.log(`Processing ${tsconfigFile}`);
+                    const projectDisplayName = `${projectDisplayNameWithoutTsConfig}.${tsconfigFile}`;
+                    options.explicitTsConfigJson = tsconfigFile;
+                    try {
+                        indexSingleProject({
+                            ...options,
+                            projectRoot,
+                            projectDisplayName,
+                            writeIndex,
+                            counter,
+                        });
+                    } catch (e) {
+                        console.log('ERROR', e);
+                        Sentry.captureException(e);
+                        nonWorkingTsConfigFiles.push(tsconfigFile);
+                    }
+                });
+
+                options.inferTsconfig = true;
+                const tsconfigFile = 'IMPLICIT';
+                const projectDisplayName = `${projectDisplayNameWithoutTsConfig}.${tsconfigFile}`;
+                try {
+                    indexSingleProject({
+                        ...options,
+                        // ...{ inferTsconfig: true },
+                        projectRoot,
+                        projectDisplayName,
+                        writeIndex,
+                        counter,
+                    });
+                } catch (e) {
+                    Sentry.captureException(e);
+                    nonWorkingTsConfigFiles.push(tsconfigFile);
+                }
+            }
+
+            if (nonWorkingTsConfigFiles.length !== 0) {
+                console.log('nonWorkingTsConfigFiles.length !== 0');
+                throw Error(
+                    `The following tsconfigs were unsuccessfully processed:  [${nonWorkingTsConfigFiles.join(',')}]`
+                );
+            }
+        } else {
+            for (const projectRoot of projects) {
+                const projectDisplayName = projectRoot === '.' ? options.cwd : projectRoot;
+                indexSingleProject({
+                    ...options,
+                    projectRoot,
+                    projectDisplayName,
+                    writeIndex,
+                    counter,
+                });
+            }
         }
         success = true;
         const gitOrgAndRepo = getGitOrgAndRepo(options.cwd);
@@ -111,6 +170,8 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
             gitRepo = gitOrgAndRepo[1];
         }
         gitCommit = getGitCommit(options.cwd);
+    } catch (e) {
+        Sentry.captureException(e);
     } finally {
         fs.close(output);
         let elapsed = new Date().getTime() - start;
@@ -148,7 +209,7 @@ function indexSingleProject(options: ProjectOptions): void {
     if (config.options.project) {
         const projectPath = path.resolve(config.options.project);
         if (ts.sys.directoryExists(projectPath)) {
-            tsconfigFileName = path.join(projectPath, 'tsconfig.json');
+            tsconfigFileName = path.join(projectPath, options.explicitTsConfigJson);
         } else {
             tsconfigFileName = projectPath;
         }
@@ -156,7 +217,7 @@ function indexSingleProject(options: ProjectOptions): void {
             if (options.inferTsconfig) {
                 fs.writeFileSync(tsconfigFileName, inferTsconfig(projectPath));
             } else {
-                console.error(`- ${options.projectDisplayName} (missing tsconfig.json)`);
+                console.error(`- ${options.projectDisplayName} (missing ${options.explicitTsConfigJson})`);
                 return;
             }
         }
