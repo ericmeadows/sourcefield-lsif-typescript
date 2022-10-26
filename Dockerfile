@@ -6,7 +6,7 @@ ARG TAG
 RUN apt-get update && \
     apt-get install -yq git curl
 
-RUN npm install -g \
+RUN npm install -f -g \
     yarn \
     pnpm
 
