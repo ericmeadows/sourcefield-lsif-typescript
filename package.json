@@ -36,7 +36,9 @@
   "dependencies": {
     "@sentry/node": "^7.14.0",
     "@sentry/tracing": "^7.14.0",
+    "@types/glob": "^8.0.0",
     "commander": "^9.2.0",
+    "glob": "^8.0.3",
     "google-protobuf": "^3.20.0",
     "posthog-node": "^2.1.0",
     "pretty-ms": "^7.0.1",
