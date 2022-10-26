@@ -16,8 +16,8 @@ export const noJsConfig = '{"exclude": ["**/node_modules"]}';
 /**
  * Returns the configuration that should be used for tsconfig.json in the provided path.
  *
- * If the directory contains at least one `*.{ts,tsx}` file then the config will be empty (`{}`).
- * If the directory doesn't contains one `*.{ts,tsx}` file then the config will
+ * If the directory contains any `*.{ts,tsx}` files then the config will be `{"exclude": ["**\/node_modules"]}`,
+ * Otherwise the config will be `{"exclude": ["**\/node_modules"], "compilerOptions":{"allowJs":true}}`
  */
 export function inferTsconfig(projectPath: string): string {
     return allowJsConfig;
