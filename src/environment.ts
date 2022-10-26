@@ -1,5 +1,6 @@
 import * as child_process from 'child_process';
 import * as Sentry from '@sentry/node';
+import { glob } from 'glob';
 
 export function getLicenseKey(): string | undefined {
     if (process.env.SOURCEFIELD_LICENSE_KEY) return process.env.SOURCEFIELD_LICENSE_KEY;
@@ -54,4 +55,27 @@ export function getGitOrgAndRepo(cwd: string): string[] {
         return getGitOrgAndRepoFromHttps(gitExtensionRemoved);
     }
     return [];
+}
+
+export function installPackages(cwd: string) {
+    let globbedFiles = glob.sync('**/pnpm-lock.yaml', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) {
+        child_process.execSync('yes | npm install', { cwd }).toString();
+        return;
+    }
+    globbedFiles = glob.sync('**/yarn-lock.yaml', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) {
+        child_process.execSync('yes | yarn install', { cwd }).toString();
+        return;
+    }
+    globbedFiles = glob.sync('**/package-lock.yaml', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) {
+        child_process.execSync('yes | npm install', { cwd }).toString();
+        return;
+    }
+    globbedFiles = glob.sync('**/npm-shrinkwrap.json', { ignore: ['**/node_modules/**'], cwd: cwd });
+    if (globbedFiles.length !== 0) {
+        child_process.execSync('yes | npm install', { cwd }).toString();
+        return;
+    }
 }

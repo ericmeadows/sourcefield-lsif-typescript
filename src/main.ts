@@ -14,7 +14,7 @@ import { Counter } from './Counter';
 import { Metadata, Project, ToolInfo } from './lsif-data/lsif';
 
 import { PostHog } from 'posthog-node';
-import { getGitCommit, getGitOrgAndRepo, getGitUsername, getLicenseKey } from './environment';
+import { getGitCommit, getGitOrgAndRepo, getGitUsername, getLicenseKey, installPackages } from './environment';
 
 import * as Sentry from '@sentry/node';
 import { LANGUAGE, LSIF_VERSION, VERSION } from './version';
@@ -50,6 +50,8 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
     if (actor) {
         client.identify({ distinctId: actor });
     }
+
+    installPackages(options.cwd);
 
     const start = new Date().getTime();
 
