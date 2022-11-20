@@ -585,12 +585,9 @@ class C {
     var constructor() { }
 }
         `,
-        numItemsInHeirarchy: 2,
-        operandsDesired: [[], []],
-        operatorsDesired: [
-            ['()', '{}'],
-            ['()', '{}'],
-        ],
+        numItemsInHeirarchy: 1,
+        operandsDesired: [[]],
+        operatorsDesired: [['()', '{}']],
     },
     {
         name: 'ClassDeclaration8 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration8.ts)',
@@ -1353,11 +1350,10 @@ for (; ;) {
     return A;
 })();
         `,
-        numItemsInHeirarchy: 4,
-        operandsDesired: [['A', 'B', 'A', 'B', 'A'], ['A', 'B', 'A', 'B', 'A'], ['A'], ['B', 'A']],
+        numItemsInHeirarchy: 3,
+        operandsDesired: [['A', 'B', 'A', 'B', 'A'], ['A'], ['B', 'A']],
         operatorsDesired: [
             ['()', '()', '=>', '{}', 'abstract', 'class', '{}', 'class', 'extends', '{}', 'new', '()', 'return', '()'],
-            ['()', '=>', '{}', 'abstract', 'class', '{}', 'class', 'extends', '{}', 'new', '()', 'return', '()'],
             ['abstract', 'class', '{}'],
             ['class', 'extends', '{}'],
         ],
@@ -1806,7 +1802,7 @@ abstract class DerivedAbstractClass extends AbstractClass {
     }
 }
         `,
-        numItemsInHeirarchy: 5,
+        numItemsInHeirarchy: 4,
         operandsDesired: [
             [
                 'DerivedAbstractClass',
@@ -1840,21 +1836,7 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'prop',
                 'toLowerCase',
             ],
-            [
-                'cb',
-                's',
-                'str',
-                'other',
-                'AbstractClass',
-                'yetAnother',
-                'DerivedAbstractClass',
-                'str',
-                'other',
-                'cb',
-                'prop',
-                'toLowerCase',
-            ],
-            ['s'],
+            ['cb', 's'],
             [
                 'str',
                 'other',
@@ -1931,34 +1913,7 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 '.',
                 '()',
             ],
-            [
-                '=',
-                '()',
-                ':',
-                'string',
-                '=>',
-                '{}',
-                'constructor',
-                '()',
-                ':',
-                'string',
-                ',',
-                ':',
-                ',',
-                ':',
-                '{}',
-                'super',
-                '()',
-                ',',
-                'this',
-                '.',
-                '()',
-                'this',
-                '.',
-                '.',
-                '()',
-            ],
-            ['()', ':', 'string', '=>', '{}'],
+            ['=', '()', ':', 'string', '=>', '{}'],
             [
                 'constructor',
                 '()',
@@ -2453,11 +2408,10 @@ async function fn1() {
     }
 }
         `,
-        numItemsInHeirarchy: 3,
+        numItemsInHeirarchy: 2,
         operandsDesired: [
             ['fn1', 'ar', 'i', '0', 'i', '1', 'i', '1', 'ar', 'push', 'i'],
             ['fn1', 'ar', 'i', '0', 'i', '1', 'i', '1', 'ar', 'push', 'i'],
-            ['i'],
         ],
         operatorsDesired: [
             [
@@ -2506,7 +2460,6 @@ async function fn1() {
                 '()',
                 '=>',
             ],
-            ['()', '=>'],
         ],
     },
     {
@@ -4078,12 +4031,9 @@ await page.evaluate(() => {
     debugger; // eslint-disable-line no-debugger
 });
         `,
-        numItemsInHeirarchy: 2,
-        operandsDesired: [['page', 'evaluate'], []],
-        operatorsDesired: [
-            ['await', '.', '()', '()', '=>', '{}', 'debugger'],
-            ['()', '=>', '{}', 'debugger'],
-        ],
+        numItemsInHeirarchy: 1,
+        operandsDesired: [['page', 'evaluate']],
+        operatorsDesired: [['await', '.', '()', '()', '=>', '{}', 'debugger']],
     },
     {
         name: 'With Statement',
@@ -4240,6 +4190,7 @@ export class InputComponent<T> {
 ];
 
 for (const testItem of testItems.slice()) {
+    // if (!testItem.skip || testItem.skip) continue;
     if (!ignoreSkipParameter && testItem.skip) continue;
     test(testItem.name, () => {
         console.log(`TEST ::> ${testItem.name}`);

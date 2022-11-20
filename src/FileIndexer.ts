@@ -676,7 +676,7 @@ export class FileIndexer {
     }
 
     private visitVariableDeclaration(node: ts.VariableDeclaration): boolean {
-        if (this.dev) console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}]`);
+        if (this.dev) console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}]`, node);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.continueWalk(node.name);
         if (node.type) {
@@ -686,6 +686,7 @@ export class FileIndexer {
         // TODO - find one that has an initializer...unsure of the OOO
         if (node.initializer) {
             this.addOperatorsToAllHalstead(['=']);
+            if (ts.isArrowFunction(node.initializer)) this.handleComponentDeclaration(node, this.lsifSymbol(node));
             this.continueWalk(node.initializer);
         }
         if (node.exclamationToken) this.continueWalk(node.exclamationToken);
@@ -694,8 +695,8 @@ export class FileIndexer {
     }
 
     private visitArrowFunction(node: ts.ArrowFunction): boolean {
-        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`, node);
-        this.handleComponentDeclaration(node, this.lsifSymbol(node));
+        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`);
+        // this.handleComponentDeclaration(node, this.lsifSymbol(node));
         this.visitNodeArray(node.parameters, '()', ','); // TODO - solve why some arrow functions have this and others do not
         if (node.type) {
             this.addOperatorsToAllHalstead([':']);
