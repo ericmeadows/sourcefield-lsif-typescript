@@ -4190,7 +4190,6 @@ export class InputComponent<T> {
 ];
 
 for (const testItem of testItems.slice()) {
-    // if (!testItem.skip || testItem.skip) continue;
     if (!ignoreSkipParameter && testItem.skip) continue;
     test(testItem.name, () => {
         console.log(`TEST ::> ${testItem.name}`);

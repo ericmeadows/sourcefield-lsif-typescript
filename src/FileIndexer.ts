@@ -676,7 +676,7 @@ export class FileIndexer {
     }
 
     private visitVariableDeclaration(node: ts.VariableDeclaration): boolean {
-        if (this.dev) console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}]`, node);
+        if (this.dev) console.log(`${this.indent()}• visitVariableDeclaration [${node.pos}:${node.end}]`);
         node.modifiers?.forEach((modifier) => this.continueWalk(modifier));
         this.continueWalk(node.name);
         if (node.type) {
