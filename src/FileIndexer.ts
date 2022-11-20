@@ -353,12 +353,13 @@ export class FileIndexer {
             | ts.TypeAliasDeclaration
             // NEW
             | ts.ArrowFunction,
-        lsifSymbol: LsifSymbol
+        lsifSymbol: LsifSymbol,
+        overrideKindType?: number
     ) {
         if (this.underTest) {
             this.pushComponentToHeirarchy(this.lsifCounter.next());
         } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
+            let id = this.emitDeclaration(node, lsifSymbol, overrideKindType);
             this.pushComponentToHeirarchy(id);
             this.getAndStoreReferences(id, node);
         }
@@ -686,7 +687,7 @@ export class FileIndexer {
         // TODO - find one that has an initializer...unsure of the OOO
         if (node.initializer) {
             this.addOperatorsToAllHalstead(['=']);
-            if (ts.isArrowFunction(node.initializer)) this.handleComponentDeclaration(node, this.lsifSymbol(node));
+            if (ts.isArrowFunction(node.initializer)) this.handleComponentDeclaration(node, this.lsifSymbol(node), 12);
             this.continueWalk(node.initializer);
         }
         if (node.exclamationToken) this.continueWalk(node.exclamationToken);
@@ -2162,7 +2163,8 @@ export class FileIndexer {
         });
     }
 
-    private getDeclarationKind(declaration: ts.Node): number {
+    private getDeclarationKind(declaration: ts.Node, getDeclarationKind?: number): number {
+        if (getDeclarationKind) return getDeclarationKind;
         if (ts.isModuleDeclaration(declaration)) return 2;
         if (ts.isNamespaceExportDeclaration(declaration)) return 3;
         if (ts.isClassDeclaration(declaration)) return 5;
@@ -2205,7 +2207,8 @@ export class FileIndexer {
             | ts.TypeAliasDeclaration
             // NEW
             | ts.ArrowFunction,
-        lsifSymbol: LsifSymbol
+        lsifSymbol: LsifSymbol,
+        overrideKindType?: number
     ): number {
         this.writeIndex(new ResultSet({ id: this.lsifCounter.next(), type: 'vertex', label: 'resultSet' }));
         this.writeIndex(new Moniker({ id: this.lsifCounter.next(), type: 'vertex', label: 'moniker' }));
@@ -2229,7 +2232,7 @@ export class FileIndexer {
             end,
             tag: new LsifRange.Tag({
                 text: lsifSymbol.value,
-                kind: this.getDeclarationKind(node),
+                kind: this.getDeclarationKind(node, overrideKindType),
                 fullRange: new FullRange({ start, end }),
             }),
         });
