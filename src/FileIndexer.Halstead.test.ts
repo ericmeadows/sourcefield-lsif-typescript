@@ -239,12 +239,21 @@ const testItems: TestArray[] = [
         codeToParse: `
 var v = (public x: string) => { };
         `,
-        numItemsInHeirarchy: 1,
-        operandsDesired: [['v', 'x']],
+        numItemsInHeirarchy: 2,
+        operandsDesired: [['v', 'x'], ['x']],
         operatorsDesired: [
             [
                 'var',
                 '=',
+                '()',
+                'public',
+                ':',
+                'string',
+                '=>',
+                '{}',
+                // ';'
+            ],
+            [
                 '()',
                 'public',
                 ':',
@@ -576,9 +585,12 @@ class C {
     var constructor() { }
 }
         `,
-        numItemsInHeirarchy: 1,
-        operandsDesired: [[]],
-        operatorsDesired: [['()', '{}']],
+        numItemsInHeirarchy: 2,
+        operandsDesired: [[], []],
+        operatorsDesired: [
+            ['()', '{}'],
+            ['()', '{}'],
+        ],
     },
     {
         name: 'ClassDeclaration8 (https://github.com/microsoft/TypeScript/blob/main/tests/cases/compiler/ClassDeclaration8.ts)',
@@ -1341,27 +1353,11 @@ for (; ;) {
     return A;
 })();
         `,
-        numItemsInHeirarchy: 3,
-        operandsDesired: [['A', 'B', 'A', 'B', 'A'], ['A'], ['B', 'A']],
+        numItemsInHeirarchy: 4,
+        operandsDesired: [['A', 'B', 'A', 'B', 'A'], ['A', 'B', 'A', 'B', 'A'], ['A'], ['B', 'A']],
         operatorsDesired: [
-            [
-                '()',
-                '()',
-                '=>',
-                '{}',
-                'abstract',
-                'class',
-                '{}',
-                'class',
-                'extends',
-                '{}',
-                'new',
-                '()',
-                // ';',
-                'return',
-                // ';',
-                '()',
-            ],
+            ['()', '()', '=>', '{}', 'abstract', 'class', '{}', 'class', 'extends', '{}', 'new', '()', 'return', '()'],
+            ['()', '=>', '{}', 'abstract', 'class', '{}', 'class', 'extends', '{}', 'new', '()', 'return', '()'],
             ['abstract', 'class', '{}'],
             ['class', 'extends', '{}'],
         ],
@@ -1554,12 +1550,12 @@ new cls3(); // should work
     },
     {
         name: 'Array mapping with Arrow Functions',
-        skip: true, // Skipping due to error below
+        skip: true, // Skipping due to error below; also has not been updated after including arrow functions as components
         codeToParse: `
 [ConcreteA, AbstractA, AbstractB].map(cls => new cls()); // should error
 [ConcreteA, ConcreteB].map(cls => new cls()); // should work
         `,
-        numItemsInHeirarchy: 1,
+        numItemsInHeirarchy: 3,
         operandsDesired: [
             ['ConcreteA', 'AbstractA', 'AbstractB', 'map', 'cls', 'cls', 'ConcreteA', 'ConcreteB', 'map', 'cls', 'cls'],
         ],
@@ -1810,7 +1806,7 @@ abstract class DerivedAbstractClass extends AbstractClass {
     }
 }
         `,
-        numItemsInHeirarchy: 4,
+        numItemsInHeirarchy: 5,
         operandsDesired: [
             [
                 'DerivedAbstractClass',
@@ -1844,7 +1840,21 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 'prop',
                 'toLowerCase',
             ],
-            ['cb', 's'],
+            [
+                'cb',
+                's',
+                'str',
+                'other',
+                'AbstractClass',
+                'yetAnother',
+                'DerivedAbstractClass',
+                'str',
+                'other',
+                'cb',
+                'prop',
+                'toLowerCase',
+            ],
+            ['s'],
             [
                 'str',
                 'other',
@@ -1921,7 +1931,34 @@ abstract class DerivedAbstractClass extends AbstractClass {
                 '.',
                 '()',
             ],
-            ['=', '()', ':', 'string', '=>', '{}'],
+            [
+                '=',
+                '()',
+                ':',
+                'string',
+                '=>',
+                '{}',
+                'constructor',
+                '()',
+                ':',
+                'string',
+                ',',
+                ':',
+                ',',
+                ':',
+                '{}',
+                'super',
+                '()',
+                ',',
+                'this',
+                '.',
+                '()',
+                'this',
+                '.',
+                '.',
+                '()',
+            ],
+            ['()', ':', 'string', '=>', '{}'],
             [
                 'constructor',
                 '()',
@@ -2416,10 +2453,11 @@ async function fn1() {
     }
 }
         `,
-        numItemsInHeirarchy: 2,
+        numItemsInHeirarchy: 3,
         operandsDesired: [
             ['fn1', 'ar', 'i', '0', 'i', '1', 'i', '1', 'ar', 'push', 'i'],
             ['fn1', 'ar', 'i', '0', 'i', '1', 'i', '1', 'ar', 'push', 'i'],
+            ['i'],
         ],
         operatorsDesired: [
             [
@@ -2468,6 +2506,7 @@ async function fn1() {
                 '()',
                 '=>',
             ],
+            ['()', '=>'],
         ],
     },
     {
@@ -4039,9 +4078,12 @@ await page.evaluate(() => {
     debugger; // eslint-disable-line no-debugger
 });
         `,
-        numItemsInHeirarchy: 1,
-        operandsDesired: [['page', 'evaluate']],
-        operatorsDesired: [['await', '.', '()', '()', '=>', '{}', 'debugger']],
+        numItemsInHeirarchy: 2,
+        operandsDesired: [['page', 'evaluate'], []],
+        operatorsDesired: [
+            ['await', '.', '()', '()', '=>', '{}', 'debugger'],
+            ['()', '=>', '{}', 'debugger'],
+        ],
     },
     {
         name: 'With Statement',
@@ -4198,8 +4240,6 @@ export class InputComponent<T> {
 ];
 
 for (const testItem of testItems.slice()) {
-    if (!testItem.skip) continue;
-
     if (!ignoreSkipParameter && testItem.skip) continue;
     test(testItem.name, () => {
         console.log(`TEST ::> ${testItem.name}`);

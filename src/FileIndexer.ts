@@ -695,6 +695,7 @@ export class FileIndexer {
 
     private visitArrowFunction(node: ts.ArrowFunction): boolean {
         if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`, node);
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
         this.visitNodeArray(node.parameters, '()', ','); // TODO - solve why some arrow functions have this and others do not
         if (node.type) {
             this.addOperatorsToAllHalstead([':']);
@@ -702,7 +703,6 @@ export class FileIndexer {
         }
         if (node.equalsGreaterThanToken.pos != node.equalsGreaterThanToken.end) this.addOperatorsToAllHalstead(['=>']);
         this.continueWalk(node.body);
-        this.handleComponentDeclaration(node, this.lsifSymbol(node));
         if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}] <<EXIT>>`);
         return false;
     }
