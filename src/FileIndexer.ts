@@ -328,6 +328,43 @@ export class FileIndexer {
         return true;
     }
 
+    private handleComponentDeclaration(
+        node:
+            | ts.ClassDeclaration
+            | ts.InterfaceDeclaration
+            | ts.ModuleDeclaration
+            | ts.FunctionDeclaration
+            | ts.MethodDeclaration
+            | ts.MethodSignature
+            | ts.ConstructorDeclaration
+            | ts.GetAccessorDeclaration
+            | ts.SetAccessorDeclaration
+            | ts.ClassStaticBlockDeclaration
+            | ts.FunctionExpression
+            // |
+            | ts.ClassDeclaration
+            | ts.EnumDeclaration
+            | ts.InterfaceDeclaration
+            | ts.TypeParameterDeclaration
+            | ts.PropertyDeclaration
+            | ts.ConstructSignatureDeclaration
+            | ts.VariableDeclaration
+            // |
+            | ts.TypeAliasDeclaration
+            // NEW
+            | ts.ArrowFunction,
+        lsifSymbol: LsifSymbol,
+        overrideKindType?: number
+    ) {
+        if (this.underTest) {
+            this.pushComponentToHeirarchy(this.lsifCounter.next());
+        } else {
+            let id = this.emitDeclaration(node, lsifSymbol, overrideKindType);
+            this.pushComponentToHeirarchy(id);
+            this.getAndStoreReferences(id, node);
+        }
+    }
+
     private visitSourceFile(node: ts.SourceFile) {
         if (this.dev) console.log(`**FILE** -->${node.fileName}`);
         if (this.dev) console.log(`${this.indent()}• visitSourceFile [${node.pos}:${node.end}]`);
@@ -650,6 +687,7 @@ export class FileIndexer {
         // TODO - find one that has an initializer...unsure of the OOO
         if (node.initializer) {
             this.addOperatorsToAllHalstead(['=']);
+            if (ts.isArrowFunction(node.initializer)) this.handleComponentDeclaration(node, this.lsifSymbol(node), 12);
             this.continueWalk(node.initializer);
         }
         if (node.exclamationToken) this.continueWalk(node.exclamationToken);
@@ -658,8 +696,12 @@ export class FileIndexer {
     }
 
     private visitArrowFunction(node: ts.ArrowFunction): boolean {
-        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`, node);
+        if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}]`);
         this.visitNodeArray(node.parameters, '()', ','); // TODO - solve why some arrow functions have this and others do not
+        if (node.type) {
+            this.addOperatorsToAllHalstead([':']);
+            this.continueWalk(node.type);
+        }
         if (node.equalsGreaterThanToken.pos != node.equalsGreaterThanToken.end) this.addOperatorsToAllHalstead(['=>']);
         this.continueWalk(node.body);
         if (this.dev) console.log(`${this.indent()}• visitArrowFunction [${node.pos}:${node.end}] <<EXIT>>`);
@@ -1617,16 +1659,7 @@ export class FileIndexer {
 
     private visitClassDeclaration(node: ts.ClassDeclaration): boolean {
         if (this.dev) console.log(`${this.indent()}• visitClassDeclaration [${node.pos}:${node.end}]`);
-
-        let lsifSymbol = this.lsifSymbol(node);
-
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-        } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
-            this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node);
-        }
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
 
         if (this.dev)
             console.log(
@@ -1680,15 +1713,7 @@ export class FileIndexer {
 
         if (this.dev)
             console.log(`${this.indent()}• visitInterfaceDeclaration [${node.pos}:${node.end}]`, node.kind, node);
-        let lsifSymbol = this.lsifSymbol(node);
-
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-        } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
-            this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node);
-        }
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
 
         if (this.dev)
             console.log(
@@ -1777,16 +1802,7 @@ export class FileIndexer {
 
     private visitTypeAliasDeclaration(node: ts.TypeAliasDeclaration): boolean {
         if (this.dev) console.log(`${this.indent()}• visitTypeAliasDeclaration [${node.pos}:${node.end}]`);
-
-        let lsifSymbol = this.lsifSymbol(node);
-
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-        } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
-            this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node);
-        }
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
 
         if (this.dev)
             console.log(
@@ -1851,15 +1867,7 @@ export class FileIndexer {
 
         if (this.dev)
             console.log(`${this.indent()}• visitMethodDeclaration [${node.pos}:${node.end}]`, node.kind, node);
-        let lsifSymbol = this.lsifSymbol(node);
-
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-        } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
-            this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node);
-        }
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
 
         if (this.dev)
             console.log(
@@ -1981,15 +1989,7 @@ export class FileIndexer {
 
     private visitPropertyDeclaration(node: ts.PropertyDeclaration) {
         if (this.dev) console.log(`${this.indent()}• visitPropertyDeclaration [${node.pos}:${node.end}]`);
-        let lsifSymbol = this.lsifSymbol(node);
-
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-        } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
-            this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node);
-        }
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
 
         if (this.dev)
             console.log(
@@ -2052,14 +2052,7 @@ export class FileIndexer {
                 node
             );
         let lsifSymbol = this.lsifSymbol(node);
-
-        if (this.underTest) {
-            this.pushComponentToHeirarchy(this.lsifCounter.next());
-        } else {
-            let id = this.emitDeclaration(node, lsifSymbol);
-            this.pushComponentToHeirarchy(id);
-            this.getAndStoreReferences(id, node);
-        }
+        this.handleComponentDeclaration(node, this.lsifSymbol(node));
 
         if (this.dev)
             console.log(
@@ -2170,7 +2163,8 @@ export class FileIndexer {
         });
     }
 
-    private getDeclarationKind(declaration: ts.Node): number {
+    private getDeclarationKind(declaration: ts.Node, getDeclarationKind?: number): number {
+        if (getDeclarationKind) return getDeclarationKind;
         if (ts.isModuleDeclaration(declaration)) return 2;
         if (ts.isNamespaceExportDeclaration(declaration)) return 3;
         if (ts.isClassDeclaration(declaration)) return 5;
@@ -2185,7 +2179,7 @@ export class FileIndexer {
         if (ts.isConstructorDeclaration(declaration)) return 9;
         if (ts.isEnumDeclaration(declaration)) return 10;
         if (ts.isInterfaceDeclaration(declaration)) return 11;
-        if (ts.isFunctionDeclaration(declaration)) return 12;
+        if (ts.isFunctionDeclaration(declaration) || ts.isArrowFunction(declaration)) return 12;
         if (ts.isVariableDeclaration(declaration)) return 13;
         if (ts.isTypeParameterDeclaration(declaration)) return 26;
         return 0;
@@ -2210,8 +2204,11 @@ export class FileIndexer {
             | ts.PropertyDeclaration
             | ts.ConstructorDeclaration
             | ts.VariableDeclaration
-            | ts.TypeAliasDeclaration,
-        lsifSymbol: LsifSymbol
+            | ts.TypeAliasDeclaration
+            // NEW
+            | ts.ArrowFunction,
+        lsifSymbol: LsifSymbol,
+        overrideKindType?: number
     ): number {
         this.writeIndex(new ResultSet({ id: this.lsifCounter.next(), type: 'vertex', label: 'resultSet' }));
         this.writeIndex(new Moniker({ id: this.lsifCounter.next(), type: 'vertex', label: 'moniker' }));
@@ -2235,7 +2232,7 @@ export class FileIndexer {
             end,
             tag: new LsifRange.Tag({
                 text: lsifSymbol.value,
-                kind: this.getDeclarationKind(node),
+                kind: this.getDeclarationKind(node, overrideKindType),
                 fullRange: new FullRange({ start, end }),
             }),
         });
@@ -2264,6 +2261,8 @@ export class FileIndexer {
             | ts.TypeParameterDeclaration
             | ts.VariableDeclaration
             | ts.TypeAliasDeclaration
+            // NEW
+            | ts.ArrowFunction
     ) {
         if (!node.name) return;
         try {

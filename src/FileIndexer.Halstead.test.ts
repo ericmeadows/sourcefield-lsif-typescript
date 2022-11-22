@@ -32,7 +32,7 @@ let options: ProjectOptions = {
     counter,
     explicitTsConfigJson: 'tsconfig.json',
     explicitImplicitLoop: false,
-    dev: true,
+    dev: false,
 };
 
 let compilerOptions: ts.CompilerOptions = {
@@ -239,12 +239,21 @@ const testItems: TestArray[] = [
         codeToParse: `
 var v = (public x: string) => { };
         `,
-        numItemsInHeirarchy: 1,
-        operandsDesired: [['v', 'x']],
+        numItemsInHeirarchy: 2,
+        operandsDesired: [['v', 'x'], ['x']],
         operatorsDesired: [
             [
                 'var',
                 '=',
+                '()',
+                'public',
+                ':',
+                'string',
+                '=>',
+                '{}',
+                // ';'
+            ],
+            [
                 '()',
                 'public',
                 ':',
@@ -1344,24 +1353,7 @@ for (; ;) {
         numItemsInHeirarchy: 3,
         operandsDesired: [['A', 'B', 'A', 'B', 'A'], ['A'], ['B', 'A']],
         operatorsDesired: [
-            [
-                '()',
-                '()',
-                '=>',
-                '{}',
-                'abstract',
-                'class',
-                '{}',
-                'class',
-                'extends',
-                '{}',
-                'new',
-                '()',
-                // ';',
-                'return',
-                // ';',
-                '()',
-            ],
+            ['()', '()', '=>', '{}', 'abstract', 'class', '{}', 'class', 'extends', '{}', 'new', '()', 'return', '()'],
             ['abstract', 'class', '{}'],
             ['class', 'extends', '{}'],
         ],
@@ -1554,12 +1546,12 @@ new cls3(); // should work
     },
     {
         name: 'Array mapping with Arrow Functions',
-        skip: true, // Skipping due to error below
+        skip: true, // Skipping due to error below; also has not been updated after including arrow functions as components
         codeToParse: `
 [ConcreteA, AbstractA, AbstractB].map(cls => new cls()); // should error
 [ConcreteA, ConcreteB].map(cls => new cls()); // should work
         `,
-        numItemsInHeirarchy: 1,
+        numItemsInHeirarchy: 3,
         operandsDesired: [
             ['ConcreteA', 'AbstractA', 'AbstractB', 'map', 'cls', 'cls', 'ConcreteA', 'ConcreteB', 'map', 'cls', 'cls'],
         ],
