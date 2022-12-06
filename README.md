@@ -42,6 +42,7 @@ Navigate to the project root, containing `package.json`.
 
 ```sh
 yarn build
+yarn unlink || true
 yarn link
 
 lsif-typescript index --yarn-workspaces # For Yarn v2

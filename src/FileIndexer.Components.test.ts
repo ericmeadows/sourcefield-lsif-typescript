@@ -32,6 +32,7 @@ let options: ProjectOptions = {
     counter,
     explicitTsConfigJson: 'tsconfig.json',
     explicitImplicitLoop: false,
+    skip: 'false',
     dev: false,
 };
 
