@@ -58,9 +58,7 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
     }
     const output = fs.openSync(options.output, 'w');
 
-    console.log('options.skip', options.skip);
     if (options.skip === 'true') {
-        console.log('SKIPPING BECAUSE TRUE');
         fs.writeSync(output, '{}\n');
         fs.close(output);
         return;
