@@ -15,6 +15,7 @@ export interface MultiProjectOptions {
     indexedProjects: Set<string>;
     explicitTsConfigJson: string;
     explicitImplicitLoop: boolean;
+    skip: string;
     dev: boolean;
 }
 
@@ -41,13 +42,18 @@ export function mainCommand(indexAction: (projects: string[], options: MultiProj
         .option('--yarn-workspaces', 'whether to index all yarn workspaces', false)
         .option('--yarn-berry-workspaces', 'whether to index all yarn v3 workspaces', false)
         .option('--infer-tsconfig', "whether to infer the tsconfig.json file, if it's missing", false)
-        .option('--output <path>', 'path to the output file', 'index.scip')
+        .option('--output <path>', 'path to the output file', 'index.yaml')
         .option('--no-progress-bar', 'whether to disable the progress bar')
         .option('--explicit-ts-config-json <filename>', 'Explicit tsconfig.json filename', 'tsconfig.json')
         .option(
             '--explicit-implicit-loop',
             'Loops over all tsconfig.*.json files && implicit tsconfig.json file => single map',
             false
+        )
+        .option(
+            '--skip <skip>',
+            'whether to skip the parse and emit an empty file or not; if "true", it will skip (all other values are ignored)',
+            'false'
         )
         .option('--dev', 'whether to run in dev mode - shows detailed print outputs')
         .argument('[projects...]')

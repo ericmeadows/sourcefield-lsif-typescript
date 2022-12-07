@@ -51,6 +51,19 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
         client.identify({ distinctId: actor });
     }
 
+    options.cwd = makeAbsolutePath(process.cwd(), options.cwd);
+    options.output = makeAbsolutePath(options.cwd, options.output);
+    if (!options.indexedProjects) {
+        options.indexedProjects = new Set();
+    }
+    const output = fs.openSync(options.output, 'w');
+
+    if (options.skip === 'true') {
+        fs.writeSync(output, '{}\n');
+        fs.close(output);
+        return;
+    }
+
     installPackages(options.cwd);
 
     const start = new Date().getTime();
@@ -62,12 +75,6 @@ export function indexCommand(projects: string[], options: MultiProjectOptions): 
     } else if (projects.length === 0) {
         projects.push(options.cwd);
     }
-    options.cwd = makeAbsolutePath(process.cwd(), options.cwd);
-    options.output = makeAbsolutePath(options.cwd, options.output);
-    if (!options.indexedProjects) {
-        options.indexedProjects = new Set();
-    }
-    const output = fs.openSync(options.output, 'w');
     let documentCount = 0;
     let counter = new Counter();
     const writeIndex = (index: any): void => {
