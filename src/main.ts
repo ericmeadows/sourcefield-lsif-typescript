@@ -25,7 +25,7 @@ export const lsiftyped = lsif.lib.codeintel.lsiftyped;
 
 export function main(): void {
     Sentry.init({
-        dsn: 'https://5d2514fa0b3d44e1bdeaed1c4e32428c@sentry.sourcefield.io/4',
+        dsn: 'https://80d0dd10a8714365800aba7ec0217e11@o4504299712348160.ingest.sentry.io/4504299854888960',
 
         // Set tracesSampleRate to 1.0 to capture 100%
         // of transactions for performance monitoring.
